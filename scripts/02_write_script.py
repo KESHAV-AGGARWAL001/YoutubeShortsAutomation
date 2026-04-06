@@ -1,5 +1,6 @@
 import os
 import sys
+import re
 import json
 from datetime import datetime
 from dotenv import load_dotenv
@@ -200,6 +201,52 @@ def _build_performance_context():
         return ""
 
 
+def sanitize_tags(tags):
+    """
+    Sanitize tags to meet YouTube Data API requirements.
+    Called before saving seo_data.json so tags are always clean.
+
+    Rules enforced:
+    - Strip leading # (YouTube tags must NOT start with #)
+    - Only allow: letters, digits, spaces, hyphens, apostrophes
+    - Remove empty tags after cleaning
+    - Truncate single-word tags to 30 chars, multi-word to 100 chars
+    - Total combined length must stay under 500 chars
+    """
+    cleaned = []
+    for tag in tags:
+        tag = str(tag).strip().lstrip('#').strip()
+        if not tag:
+            continue
+        # Keep only safe characters: letters, digits, spaces, hyphens, apostrophes
+        tag = re.sub(r"[^a-zA-Z0-9 '\-]", '', tag).strip()
+        if not tag:
+            continue
+        tag = tag[:100] if ' ' in tag else tag[:30]
+        cleaned.append(tag)
+
+    # Deduplicate (case-insensitive) while preserving order
+    seen = set()
+    deduped = []
+    for tag in cleaned:
+        key = tag.lower()
+        if key not in seen:
+            seen.add(key)
+            deduped.append(tag)
+
+    # Enforce 500-char total limit
+    result = []
+    total = 0
+    for tag in deduped:
+        cost = len(tag) + (1 if result else 0)  # comma before every tag except first
+        if total + cost > 500:
+            break
+        result.append(tag)
+        total += cost
+
+    return result
+
+
 def write_shorts_scripts(book_page_text, book_name):
     performance_context = _build_performance_context()
 
@@ -389,6 +436,10 @@ def main():
             if t.lower() not in existing_lower:
                 tags.append(t)
                 existing_lower.add(t.lower())
+
+    # Sanitize tags before saving — strip #, special chars, enforce 500-char limit
+    tags = sanitize_tags(tags)
+    print(f"  Tags     : {len(tags)} tags ({sum(len(t) for t in tags)} chars)")
 
     # Update seo_data.json
     seo_data = {

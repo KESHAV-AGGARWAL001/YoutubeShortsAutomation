@@ -74,41 +74,42 @@ def sanitize_tags(tags):
     """
     Clean tags to satisfy YouTube Data API requirements:
     - Strip leading # (YouTube tags must NOT start with #)
-    - Strip whitespace, remove empty tags
-    - Remove forbidden characters (<, >, ", &, newlines, emojis)
+    - Only allow: letters, digits, spaces, hyphens, apostrophes
     - Truncate: single-word tags ≤ 30 chars, multi-word ≤ 100 chars
     - Total combined length of all tags ≤ 500 characters
     """
     import re
     cleaned = []
     for tag in tags:
-        tag = str(tag).strip()
-        # Strip leading # — YouTube tags must not start with #
-        tag = tag.lstrip('#').strip()
+        tag = str(tag).strip().lstrip('#').strip()
         if not tag:
             continue
-        # Remove forbidden / problematic characters
-        tag = re.sub(r'[<>\"&\r\n]', '', tag).strip()
-        # Strip emoji and non-ASCII characters
-        tag = re.sub(r'[^\x00-\x7F]+', '', tag).strip()
+        # Keep only safe characters
+        tag = re.sub(r"[^a-zA-Z0-9 '\-]", '', tag).strip()
         if not tag:
             continue
-        # Truncate per YouTube limits
-        if ' ' in tag:
-            tag = tag[:100]
-        else:
-            tag = tag[:30]
+        tag = tag[:100] if ' ' in tag else tag[:30]
         cleaned.append(tag)
 
-    # Enforce 500-char total limit (sum of all tag lengths)
+    # Deduplicate (case-insensitive)
+    seen = set()
+    deduped = []
+    for tag in cleaned:
+        if tag.lower() not in seen:
+            seen.add(tag.lower())
+            deduped.append(tag)
+
+    # Enforce 500-char total limit
     result = []
     total = 0
-    for tag in cleaned:
-        if total + len(tag) + 1 > 500:
+    for tag in deduped:
+        cost = len(tag) + (1 if result else 0)
+        if total + cost > 500:
             break
         result.append(tag)
-        total += len(tag) + 1
+        total += cost
 
+    print(f"  Tags      : {len(result)} tags ({total} chars total)")
     return result
 
 
