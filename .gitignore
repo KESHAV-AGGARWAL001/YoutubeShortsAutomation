@@ -30,3 +30,8 @@ reels/
 # OS Specific
 .DS_Store
 Thumbs.db
+
+analytics_performance.json
+trendig_tags_cache.json
+book_shorts_cache.json
+trending_tags_cache.json

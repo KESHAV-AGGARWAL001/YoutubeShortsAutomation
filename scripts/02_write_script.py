@@ -117,7 +117,46 @@ def ask_groq(prompt, max_tokens=8192):
         text = text.split("```")[1].split("```")[0].strip()
     return text
 
+def sanitize_json_text(text):
+    """
+    Fix literal newlines and control characters inside JSON string values.
+    Groq sometimes outputs real newline characters inside description/script
+    fields instead of escaped \\n — this breaks json.loads with
+    'Invalid control character' errors.
+
+    Walks the raw text character by character, tracking whether we're
+    inside a JSON string, and escapes any bare control characters found there.
+    """
+    result = []
+    in_string = False
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        # Toggle in_string on unescaped double-quotes
+        if ch == '"' and (i == 0 or text[i - 1] != '\\'):
+            in_string = not in_string
+            result.append(ch)
+        elif in_string:
+            if ch == '\n':
+                result.append('\\n')
+            elif ch == '\r':
+                result.append('\\r')
+            elif ch == '\t':
+                result.append('\\t')
+            elif ord(ch) < 0x20:
+                # Drop other control characters — they're never valid in JSON strings
+                pass
+            else:
+                result.append(ch)
+        else:
+            result.append(ch)
+        i += 1
+    return ''.join(result)
+
+
 def parse_json_safe(text, retries_left=2, prompt=None):
+    # Sanitize control characters before first parse attempt
+    text = sanitize_json_text(text)
     try:
         return json.loads(text)
     except json.JSONDecodeError as e:

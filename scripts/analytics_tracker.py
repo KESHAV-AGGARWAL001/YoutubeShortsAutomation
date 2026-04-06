@@ -38,18 +38,19 @@ SCOPES = [
 
 # Title pattern fingerprints — classify each title into a pattern bucket
 TITLE_PATTERNS = [
+    # Specific patterns first — order matters, first match wins
     ("nobody_told_me",    r"nobody (told|tells)"),
     ("i_wish_i_knew",     r"i wish (someone|i)"),
-    ("the_lesson",        r"the (lesson|truth|secret|real|brutal)"),
-    ("what_winners_do",   r"what (winners|successful|billionaires|top)"),
+    ("brutal_truth",      r"brutal (truth|reality|honest)"),   # before the_lesson ("brutal" removed from there)
     ("stop_doing",        r"^stop (doing|wasting|making)"),
-    ("brutal_truth",      r"brutal (truth|reality|honest)"),
     ("99_percent",        r"99(%|percent)"),
     ("why_youre_losing",  r"why you.re (still|losing|struggling|broke|stuck|failing)"),
     ("one_decision",      r"(one|1) (decision|habit|choice|step|thing)"),
     ("nobody_talks",      r"nobody (talks|tells|warns|says)"),
+    ("what_winners_do",   r"what (winners|successful|billionaires|top)"),
     ("how_to",            r"^how to"),
     ("youre_away",        r"you.re .* away"),
+    ("the_lesson",        r"the (lesson|truth|secret|real)"),   # "brutal" removed — caught above
     ("other",             r".*"),  # catch-all
 ]
 
