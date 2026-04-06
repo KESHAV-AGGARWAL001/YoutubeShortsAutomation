@@ -73,13 +73,36 @@ def cleanup_output():
 
 
 def get_schedules():
-    tomorrow = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
-    m_utc    = tomorrow.replace(hour=14, minute=0, second=0, microsecond=0)
-    e_utc    = tomorrow.replace(hour=21, minute=0, second=0, microsecond=0)
+    """
+    Schedule both videos for TODAY.
+    Preferred times: 9:00 AM EST (14:00 UTC) and 4:00 PM EST (21:00 UTC).
+    If a preferred time has already passed, schedule 15 min from now instead
+    (YouTube requires at least 5 min in the future for scheduled uploads).
+    """
+    now = datetime.datetime.now(datetime.timezone.utc)
     fmt = "%Y-%m-%dT%H:%M:%S.000Z"
+    buffer = datetime.timedelta(minutes=15)
+
+    # Preferred times today
+    m_utc = now.replace(hour=14, minute=0, second=0, microsecond=0)  # 9:00 AM EST
+    e_utc = now.replace(hour=21, minute=0, second=0, microsecond=0)  # 4:00 PM EST
+
+    # If preferred time already passed → use 15 min from now
+    if m_utc <= now:
+        m_utc  = now + buffer
+        m_label = f"~{(now + buffer).strftime('%I:%M %p')} UTC (9AM EST passed, publishing now)"
+    else:
+        m_label = "9:00 AM EST (USA morning)"
+
+    if e_utc <= now:
+        e_utc  = now + buffer + datetime.timedelta(minutes=5)  # slight offset from Video 1
+        e_label = f"~{(now + buffer + datetime.timedelta(minutes=5)).strftime('%I:%M %p')} UTC (4PM EST passed, publishing now)"
+    else:
+        e_label = "4:00 PM EST (USA evening)"
+
     return (
-        m_utc.strftime(fmt),    "9:00 AM EST (USA morning)",
-        e_utc.strftime(fmt),    "4:00 PM EST (USA evening)",
+        m_utc.strftime(fmt), m_label,
+        e_utc.strftime(fmt), e_label,
     )
 
 

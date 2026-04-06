@@ -50,11 +50,11 @@ def get_youtube_client():
 def get_publish_time():
     """
     Read publish time from PUBLISH_TIME_UTC environment variable.
-    This is set by main.py before calling this script:
-      Video 1 → 12:00 PM IST = 06:30 UTC
-      Video 2 →  6:00 PM IST = 12:30 UTC
+    Set by main.py before calling this script:
+      Video 1 → 9:00 AM EST (14:00 UTC) or ~15 min from now if passed
+      Video 2 → 4:00 PM EST (21:00 UTC) or ~15 min from now if passed
 
-    Falls back to tomorrow 12:00 PM IST if running standalone.
+    Falls back to 15 minutes from now if running standalone.
     """
     # ── Read from environment — set by main.py ──
     env_time = os.environ.get("PUBLISH_TIME_UTC", "").strip()
@@ -63,11 +63,10 @@ def get_publish_time():
         print(f"  Schedule from pipeline: {env_time}")
         return env_time
 
-    # ── Standalone fallback — tomorrow 12:00 PM IST ──
-    tomorrow = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
-    fallback = tomorrow.replace(hour=6, minute=30, second=0, microsecond=0)
+    # ── Standalone fallback — 15 minutes from now (today) ──
+    fallback     = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=15)
     fallback_str = fallback.strftime("%Y-%m-%dT%H:%M:%S.000Z")
-    print(f"  Schedule fallback (standalone): {fallback_str} → 12:00 PM IST")
+    print(f"  Schedule fallback (standalone): {fallback_str} → ~15 min from now")
     return fallback_str
 
 
