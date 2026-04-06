@@ -16,7 +16,7 @@ Usage:
 
 Prerequisites:
   - Run 05_make_video.py first (or the full pipeline) so a source video exists
-  - .env must have GROQ_API_KEY, INSTAGRAM_TOKEN, INSTAGRAM_ID
+  - .env must have GEMINI_API_KEY, INSTAGRAM_TOKEN, INSTAGRAM_ID
 """
 import subprocess
 import sys

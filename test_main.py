@@ -2,7 +2,7 @@
 test_main.py — Full Test Pipeline
 
 Runs EVERYTHING including:
-  - Script writing (Groq)
+  - Script writing (Gemini)
   - Voiceover (Edge TTS)
   - Footage selection
   - Video assembly (FFmpeg)
@@ -24,7 +24,7 @@ import shutil
 import datetime
 
 TEST_STEPS = [
-    ("02_write_script.py", "Finding topic + writing script (Groq)",          False),
+    ("02_write_script.py", "Finding topic + writing script (Gemini)",        False),
     ("03_voiceover.py",    "Generating voiceover (Edge TTS)",                 False),
     ("04_get_footage.py",  "Selecting footage (2 random categories)",         False),
     ("05_make_video.py",   "Assembling video (FFmpeg)",                       False),
@@ -226,7 +226,7 @@ def main():
     os.makedirs("reels", exist_ok=True)
 
     print(f"\n  What this test does:")
-    print(f"  ✅ Writes script with Groq")
+    print(f"  ✅ Writes script with Gemini")
     print(f"  ✅ Generates voiceover with Edge TTS")
     print(f"  ✅ Assembles full YouTube-style video")
     print(f"  ✅ Creates 9:16 vertical Instagram Reel")

@@ -27,11 +27,11 @@
 
 YouTubeBot is a **high-growth YouTube Shorts engine** targeting USA audience (18–35 demographic: money, growth, success, discipline). It **sequentially reads `.pdf` books**, extracting two pages per day, and generates 2 highly-engaging vertical YouTube Shorts — one emotional storytelling angle, one direct advice angle.
 
-All SEO metadata (title, description, tags, category) is now fully optimized for YouTube's algorithm with live Google Trends injection and an A/B analytics feedback loop that improves Groq prompts automatically over time.
+All SEO metadata (title, description, tags, category) is now fully optimized for YouTube's algorithm with live Google Trends injection and an A/B analytics feedback loop that improves Gemini prompts automatically over time.
 
 | Component | Technology | Cost |
 |-----------|-----------|------|
-| **Script Writing** | **Groq API** (Llama 3.3 70B) | Free |
+| **Script Writing** | **Gemini API** (`gemini-2.0-flash`) | Free |
 | **Paging System** | Custom Python Chunker + JSON Progress Tracking | Free |
 | **Voiceover** | **Microsoft Edge TTS** (`en-US-GuyNeural`) | Free |
 | **Video Background** | **Dynamic Black Generation** (lavfi black color) | Free |
@@ -66,7 +66,7 @@ graph TD
     P2 --> D["ALL DONE"]
 
     subgraph "run_pipeline (per video)"
-        RS1[02_write_script.py\nGroq AI + Trending Tags + A/B context] --> RS2[03_voiceover.py]
+        RS1[02_write_script.py\nGemini AI + Trending Tags + A/B context] --> RS2[03_voiceover.py]
         RS2 --> RS3[04_get_footage.py]
         RS3 --> RS4[05_make_video.py\nassembles 9:16 Short + SRT file]
         RS4 --> RS5[06_thumbnail.py\ndark cinematic thumbnail]
@@ -84,7 +84,7 @@ At the heart of the channel's value proposition is the `books/` directory parsin
 2. Drop in a PDF format book (e.g., `books/atomic_habits.pdf`).
 3. During Video #1 execution the AI reads `books/progress.json`.
 4. It extracts exactly 2 physical pages of text from the PDF (starting at `current_page`). You can manually edit `progress.json` to set `"current_page": 15` to skip preface pages, or `"end_page": 200` to stop before the glossary.
-5. The Groq API converts these 2 pages into 2 different Short scripts simultaneously.
+5. The Gemini API converts these 2 pages into 2 different Short scripts simultaneously.
 6. `current_page` increments by 2; the second script is cached for Short 2.
 7. Next day the bot reads the next consecutive 2 pages automatically.
 8. The bot flags completion and waits for the next `.pdf` when a book is finished.
@@ -97,11 +97,11 @@ At the heart of the channel's value proposition is the `books/` directory parsin
 
 ### Step 1: Script Generation — [scripts/02_write_script.py](scripts/02_write_script.py)
 
-Reads the book slice, calls Groq API, and transforms raw text into 2 viral Short scripts targeting the US market. Output includes Hook, Script Body, CTA, plus full SEO metadata.
+Reads the book slice, calls Gemini API, and transforms raw text into 2 viral Short scripts targeting the US market. Output includes Hook, Script Body, CTA, plus full SEO metadata.
 
 **New in this version:**
 - **Viral title formats** — 12 proven patterns (e.g. `"The Brutal Truth About Why You're Still Losing #Shorts"`) — no book name, always ends with `#Shorts`, always under 60 characters for full mobile display.
-- **A/B performance context** — If the analytics tracker has enough data, the top-performing title patterns from your own channel are injected into the Groq prompt so the AI learns what works and writes more of it.
+- **A/B performance context** — If the analytics tracker has enough data, the top-performing title patterns from your own channel are injected into the Gemini prompt so the AI learns what works and writes more of it.
 - **Trending tag injection** — After script generation, live Google Trends data is merged into the tags list.
 - **`category_id` in output** — `22` for emotional storytelling, `27` for direct advice.
 
@@ -270,7 +270,7 @@ python scripts/analytics_tracker.py --patterns
 **A/B test loop:**
 - Each day's 2 uploads are a natural A/B test: Short 1 (emotional) vs Short 2 (direct advice)
 - The tracker compares avg views by angle type and by title pattern
-- Top-performing patterns are fed back into the **Groq prompt the next day** — the AI automatically writes more of what works on your specific channel
+- Top-performing patterns are fed back into the **Gemini prompt the next day** — the AI automatically writes more of what works on your specific channel
 
 ### Performance log format (`analytics_performance.json`)
 ```json
@@ -308,14 +308,14 @@ c:\YoutubeShortsAutomation\
 │   └── your_book.pdf                 # Add PDF books here
 │
 ├── scripts/
-│   ├── 02_write_script.py            # Book reader + Groq AI + SEO + trending tags
+│   ├── 02_write_script.py            # Book reader + Gemini AI + SEO + trending tags
 │   ├── 03_voiceover.py               # Edge TTS voiceover (GuyNeural)
 │   ├── 04_get_footage.py             # Stock footage selector + subtitle timings
 │   ├── 05_make_video.py              # Short assembler (9:16 + SRT subtitles + music)
 │   ├── 06_thumbnail.py               # Dark cinematic thumbnail generator (NEW DESIGN)
 │   ├── 07_upload.py                  # YouTube upload + thumbnail + SRT captions + analytics log
 │   ├── get_trending_tags.py          # Google Trends tag fetcher (NEW)
-│   └── analytics_tracker.py         # A/B performance tracker + Groq feedback loop (NEW)
+│   └── analytics_tracker.py         # A/B performance tracker + Gemini feedback loop (NEW)
 │
 ├── shared/
 │   └── youtube_api.py                # Story series YouTube API (same SEO improvements)
@@ -346,7 +346,7 @@ c:\YoutubeShortsAutomation\
 
 `.env` file:
 ```env
-GROQ_API_KEY=your_groq_key_here
+GEMINI_API_KEY=your_gemini_key_here
 YOUTUBE_CLIENT_SECRET=credentials.json
 YOUTUBE_TOKEN_FILE=youtube_token.pickle
 YOUTUBE_CHANNEL_ID=your_channel_id_here
@@ -435,7 +435,7 @@ In addition to the main book pipeline, a separate **multi-part story series** sy
 
 | Script | Purpose |
 |--------|---------|
-| `generate_story_series.py` | Generates a 2–5 part serialized story series using Groq |
+| `generate_story_series.py` | Generates a 2–5 part serialized story series using Gemini |
 | `render_story_reels.py` | Renders 1080×1920 reels with hook, subtitles, cliffhanger text |
 | `schedule_story_upload.py` | Uploads today's scheduled parts to YouTube + Instagram |
 | `story_dashboard.py` | Terminal UI showing series status, upload schedule, render status |

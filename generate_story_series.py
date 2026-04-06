@@ -1,7 +1,7 @@
 """
 generate_story_series.py — Multi-Part Story Series Generator
 
-Generates a 2–5 part serialized Instagram Reel story series using Groq AI.
+Generates a 2–5 part serialized Instagram Reel story series using Gemini AI.
 Each part is designed to end with a cliffhanger to drive engagement.
 
 Usage:
@@ -25,12 +25,19 @@ import random
 import argparse
 from datetime import datetime, date, timedelta
 from dotenv import load_dotenv
-from groq import Groq
+import google.generativeai as genai
 
 load_dotenv()
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-MODEL  = "llama-3.3-70b-versatile"
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+MODEL   = "gemini-2.0-flash"
+_model  = genai.GenerativeModel(
+    model_name=MODEL,
+    generation_config=genai.GenerationConfig(
+        temperature=0.85,
+        max_output_tokens=4096,
+    )
+)
 
 SERIES_DIR  = "story_series"
 REGISTRY    = os.path.join(SERIES_DIR, "series_registry.json")
@@ -78,15 +85,10 @@ CATEGORIES = {
 
 # ── AI Generation ───────────────────────────────────────────────
 
-def ask_groq(prompt, max_tokens=4096):
-    """Send prompt to Groq and return cleaned text."""
-    response = client.chat.completions.create(
-        model=MODEL,
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.85,
-        max_tokens=max_tokens
-    )
-    text = response.choices[0].message.content.strip()
+def ask_gemini(prompt, max_tokens=4096):
+    """Send prompt to Gemini and return cleaned text."""
+    response = _model.generate_content(prompt)
+    text = response.text.strip()
     # Strip markdown code fences
     if "```json" in text:
         text = text.split("```json")[1].split("```")[0].strip()
@@ -117,13 +119,13 @@ def parse_json_safe(text, retries=2, prompt=None):
             pass
         if retries > 0 and prompt:
             print(f"  Retrying... ({retries} attempts left)")
-            new_text = ask_groq(prompt, max_tokens=4096)
+            new_text = ask_gemini(prompt, max_tokens=4096)
             return parse_json_safe(new_text, retries - 1, prompt)
         raise ValueError(f"Failed to parse JSON after retries. Raw:\n{text[:500]}")
 
 
 def generate_story(category_key, num_parts):
-    """Generate a multi-part story series using Groq."""
+    """Generate a multi-part story series using Gemini."""
     cat = CATEGORIES[category_key]
 
     prompt = f"""You are a viral Instagram Reels scriptwriter for the account @nextlevelmind_km.
@@ -172,7 +174,7 @@ Generate exactly {num_parts} parts. Only JSON output, no other text."""
     print(f"  Category: {cat['name']}")
     print(f"  Model: {MODEL}")
 
-    text   = ask_groq(prompt, max_tokens=4096)
+    text   = ask_gemini(prompt, max_tokens=4096)
     result = parse_json_safe(text, retries=2, prompt=prompt)
 
     # Validate structure

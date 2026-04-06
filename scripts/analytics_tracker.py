@@ -2,13 +2,13 @@
 scripts/analytics_tracker.py — YouTube Performance Analytics Tracker
 
 Tracks every uploaded video and measures performance via YouTube Analytics API.
-Feeds winning title patterns back into the Groq prompt for continuous improvement.
+Feeds winning title patterns back into the Gemini prompt for continuous improvement.
 
 What it does:
   1. log_upload()      — Called right after upload, saves video metadata
   2. fetch_analytics() — Pulls views/likes/CTR from YouTube Analytics API
   3. update_all()      — Updates performance for all tracked videos
-  4. get_top_patterns()— Returns best-performing title patterns for Groq context
+  4. get_top_patterns()— Returns best-performing title patterns for Gemini context
   5. run_ab_report()   — Shows which angle (emotional vs. direct) wins per day
 
 Usage in 07_upload.py:
@@ -287,7 +287,7 @@ def _recalculate_pattern_stats(log):
 def get_top_patterns(top_n=3):
     """
     Return the top N performing title patterns sorted by average views.
-    Used to inject into the Groq prompt for A/B-informed generation.
+    Used to inject into the Gemini prompt for A/B-informed generation.
 
     Returns:
         List of dicts: [{"pattern": str, "avg_views": int, "best_title": str}]

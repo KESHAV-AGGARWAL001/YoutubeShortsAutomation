@@ -3,7 +3,7 @@ import sys
 import json
 from datetime import datetime
 from dotenv import load_dotenv
-from groq import Groq
+import google.generativeai as genai
 import PyPDF2
 
 # Trending tag injector (Phase 5) and analytics (Phase 6)
@@ -21,8 +21,15 @@ except ImportError:
     _ANALYTICS_AVAILABLE = False
 
 load_dotenv()
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-MODEL = "llama-3.3-70b-versatile"
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+MODEL = "gemini-2.0-flash"
+_model = genai.GenerativeModel(
+    model_name=MODEL,
+    generation_config=genai.GenerationConfig(
+        temperature=0.85,
+        max_output_tokens=8192,
+    )
+)
 
 def get_book_page():
     books_dir = "books"
@@ -103,14 +110,9 @@ def get_book_page():
 
     return page_text.strip(), current_book
 
-def ask_groq(prompt, max_tokens=8192):
-    response = client.chat.completions.create(
-        model=MODEL,
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.85,
-        max_tokens=max_tokens
-    )
-    text = response.choices[0].message.content.strip()
+def ask_gemini(prompt, max_tokens=8192):
+    response = _model.generate_content(prompt)
+    text = response.text.strip()
     if "```json" in text:
         text = text.split("```json")[1].split("```")[0].strip()
     elif "```" in text:
@@ -120,7 +122,7 @@ def ask_groq(prompt, max_tokens=8192):
 def sanitize_json_text(text):
     """
     Fix literal newlines and control characters inside JSON string values.
-    Groq sometimes outputs real newline characters inside description/script
+    Gemini sometimes outputs real newline characters inside description/script
     fields instead of escaped \\n — this breaks json.loads with
     'Invalid control character' errors.
 
@@ -176,14 +178,14 @@ def parse_json_safe(text, retries_left=2, prompt=None):
             pass
         if retries_left > 0 and prompt:
             print(f"  Retrying... ({retries_left} attempts left)")
-            new_text = ask_groq(prompt)
+            new_text = ask_gemini(prompt)
             return parse_json_safe(new_text, retries_left - 1, prompt)
         raise ValueError(f"Failed to parse JSON. Raw:\n{text[:500]}")
 
 def _build_performance_context():
     """
     Pull top-performing title patterns from analytics log and format
-    them as context for the Groq prompt (A/B feedback loop).
+    them as context for the Gemini prompt (A/B feedback loop).
     """
     if not _ANALYTICS_AVAILABLE:
         return ""
@@ -334,12 +336,12 @@ Respond in this EXACT JSON format — no extra text outside the JSON:
 }}
 Only JSON. No extra text."""
 
-    text = ask_groq(prompt)
+    text = ask_gemini(prompt)
     return parse_json_safe(text, retries_left=2, prompt=prompt)
 
 def main():
     print("=" * 50)
-    print("  NextLevelMind Shorts Generator — Groq")
+    print("  NextLevelMind Shorts Generator — Gemini")
     print(f"  Model: {MODEL}")
     print("=" * 50)
 

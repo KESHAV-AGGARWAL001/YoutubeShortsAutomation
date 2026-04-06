@@ -5,7 +5,7 @@ import shutil
 import datetime
 
 STEPS = [
-    ("02_write_script.py",  "Finding topic + writing script (Groq)"),
+    ("02_write_script.py",  "Finding topic + writing script (Gemini)"),
     ("03_voiceover.py",     "Generating voiceover (Edge TTS)"),
     ("04_get_footage.py",   "Selecting footage (2 random categories)"),
     ("05_make_video.py",    "Assembling video (FFmpeg)"),

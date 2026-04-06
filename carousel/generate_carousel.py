@@ -1,7 +1,7 @@
 """
 generate_carousel.py — Instagram Carousel Generator
 
-Generates carousel content using Groq AI and renders each slide
+Generates carousel content using Gemini AI and renders each slide
 as a 1080x1080 PNG using Pillow.
 
 Usage:
@@ -20,13 +20,20 @@ import argparse
 import textwrap
 from datetime import datetime
 from dotenv import load_dotenv
-from groq import Groq
+import google.generativeai as genai
 
 # Load .env from parent directory
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-MODEL  = "llama-3.3-70b-versatile"
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+MODEL   = "gemini-2.0-flash"
+_model  = genai.GenerativeModel(
+    model_name=MODEL,
+    generation_config=genai.GenerationConfig(
+        temperature=0.85,
+        max_output_tokens=4096,
+    )
+)
 
 CAROUSELS_DIR = os.path.join(os.path.dirname(__file__), "carousels")
 REGISTRY_PATH = os.path.join(CAROUSELS_DIR, "carousel_registry.json")
@@ -188,15 +195,10 @@ def hex_to_rgb(hex_color):
 
 # ── AI Generation ──────────────────────────────────────────────
 
-def ask_groq(prompt, max_tokens=4096):
-    """Send prompt to Groq and return cleaned text."""
-    response = client.chat.completions.create(
-        model=MODEL,
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.85,
-        max_tokens=max_tokens,
-    )
-    text = response.choices[0].message.content.strip()
+def ask_gemini(prompt, max_tokens=4096):
+    """Send prompt to Gemini and return cleaned text."""
+    response = _model.generate_content(prompt)
+    text = response.text.strip()
     if "```json" in text:
         text = text.split("```json")[1].split("```")[0].strip()
     elif "```" in text:
@@ -225,13 +227,13 @@ def parse_json_safe(text, retries=2, prompt=None):
             pass
         if retries > 0 and prompt:
             print(f"  Retrying... ({retries} attempts left)")
-            new_text = ask_groq(prompt, max_tokens=4096)
+            new_text = ask_gemini(prompt, max_tokens=4096)
             return parse_json_safe(new_text, retries - 1, prompt)
         raise ValueError(f"Failed to parse JSON after retries. Raw:\n{text[:500]}")
 
 
 def generate_quotes_carousel(category_key, cat):
-    """Generate a quotes carousel using Groq."""
+    """Generate a quotes carousel using Gemini."""
     palette = CATEGORY_PALETTES.get(category_key, "dark_gold")
     prompt = f"""You are a viral Instagram carousel content creator for @nextlevelmind_km.
 Create a quotes carousel for the category: {cat['name']}
@@ -289,7 +291,7 @@ Generate all slides. Only JSON output, no other text."""
 
 
 def generate_tips_carousel(category_key, cat):
-    """Generate a tips carousel using Groq."""
+    """Generate a tips carousel using Gemini."""
     palette = CATEGORY_PALETTES.get(category_key, "dark_gold")
     prompt = f"""You are a viral Instagram carousel content creator for @nextlevelmind_km.
 Create a tips/habits carousel for the category: {cat['name']}
@@ -346,7 +348,7 @@ Generate all slides. Only JSON output, no other text."""
 
 
 def generate_story_carousel(category_key, cat):
-    """Generate a story carousel using Groq."""
+    """Generate a story carousel using Gemini."""
     palette = CATEGORY_PALETTES.get(category_key, "dark_red")
     prompt = f"""You are a viral Instagram carousel content creator for @nextlevelmind_km.
 Create a story-based carousel for the category: {cat['name']}
@@ -404,7 +406,7 @@ Generate all slides. Only JSON output, no other text."""
 
 
 def generate_carousel_content(carousel_type, category_key):
-    """Generate carousel content using Groq AI."""
+    """Generate carousel content using Gemini AI."""
     cat = CATEGORIES[category_key]
 
     prompt_funcs = {
@@ -419,7 +421,7 @@ def generate_carousel_content(carousel_type, category_key):
     print(f"  Category: {cat['name']}")
     print(f"  Model: {MODEL}")
 
-    text   = ask_groq(prompt, max_tokens=4096)
+    text   = ask_gemini(prompt, max_tokens=4096)
     result = parse_json_safe(text, retries=2, prompt=prompt)
 
     # Validate structure

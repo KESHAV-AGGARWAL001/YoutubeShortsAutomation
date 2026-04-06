@@ -2,7 +2,7 @@
 test_pipeline.py — Full Pipeline Test (NO upload)
 
 Tests every script in the pipeline including all new additions:
-  ✅ 02_write_script.py  — Groq AI script + viral titles + trending tags + A/B context
+  ✅ 02_write_script.py  — Gemini AI script + viral titles + trending tags + A/B context
   ✅ 03_voiceover.py     — Edge TTS voiceover
   ✅ 04_get_footage.py   — Footage selection + subtitle timings
   ✅ 05_make_video.py    — Video assembly + SRT generation
@@ -25,7 +25,7 @@ import datetime
 # ── Config ────────────────────────────────────────────────────────────
 
 PIPELINE_STEPS = [
-    ("02_write_script.py", "Groq AI script + viral title + trending tags"),
+    ("02_write_script.py", "Gemini AI script + viral title + trending tags"),
     ("03_voiceover.py",    "Edge TTS voiceover"),
     ("04_get_footage.py",  "Footage selection + subtitle timings"),
     ("05_make_video.py",   "Video assembly + SRT subtitle file"),

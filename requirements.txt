@@ -1,4 +1,4 @@
-groq
+google-generativeai
 pillow
 requests
 python-dotenv
