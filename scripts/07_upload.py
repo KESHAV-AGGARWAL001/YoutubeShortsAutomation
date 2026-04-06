@@ -1,5 +1,6 @@
 import os
 import sys
+import re
 import json
 import datetime
 from dotenv import load_dotenv
@@ -8,6 +9,7 @@ from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+from googleapiclient.errors import ResumableUploadError
 
 load_dotenv()
 
@@ -78,7 +80,6 @@ def sanitize_tags(tags):
     - Truncate: single-word tags ≤ 30 chars, multi-word ≤ 100 chars
     - Total combined length of all tags ≤ 500 characters
     """
-    import re
     cleaned = []
     for tag in tags:
         tag = str(tag).strip().lstrip('#').strip()
@@ -148,30 +149,66 @@ def upload_video(youtube):
         }
     }
 
-    media = MediaFileUpload(
-        "output/final_video.mp4",
-        mimetype="video/mp4",
-        resumable=True,
-        chunksize=1024 * 1024 * 5
-    )
-
     print(f"  Title     : {seo['youtube_title']}")
     print(f"  Video     : #{video_num}")
     print(f"  Publish   : {ist_str}")
     print(f"  UTC       : {scheduled_time}")
     print("  Uploading...")
 
-    request  = youtube.videos().insert(
-        part="snippet,status",
-        body=body,
-        media_body=media
-    )
+    def run_upload(upload_body):
+        """Execute a resumable upload and return the response."""
+        req = youtube.videos().insert(
+            part="snippet,status",
+            body=upload_body,
+            media_body=MediaFileUpload(
+                "output/final_video.mp4",
+                mimetype="video/mp4",
+                resumable=True,
+                chunksize=1024 * 1024 * 5
+            )
+        )
+        resp = None
+        while resp is None:
+            s, resp = req.next_chunk()
+            if s:
+                print(f"  Progress  : {int(s.progress() * 100)}%", end="\r")
+        return resp
 
-    response = None
-    while response is None:
-        status, response = request.next_chunk()
-        if status:
-            print(f"  Progress  : {int(status.progress() * 100)}%", end="\r")
+    # Attempt 1 — with sanitized tags
+    try:
+        response = run_upload(body)
+    except ResumableUploadError as e:
+        if "invalidTags" not in str(e):
+            raise
+
+        # Attempt 2 — strip to bare-minimum safe tags:
+        # only single-word, purely alphanumeric, ≤ 30 chars, ≤ 500 total
+        print(f"\n  WARNING : invalidTags — rebuilding safe tag set and retrying...")
+        safe_tags = []
+        total_chars = 0
+        for tag in tags:
+            # Keep only single-word, purely alphanumeric tags
+            clean = re.sub(r'[^a-z0-9]', '', tag.lower())
+            if not clean or len(clean) > 30:
+                continue
+            cost = len(clean) + (1 if safe_tags else 0)
+            if total_chars + cost > 500:
+                break
+            safe_tags.append(clean)
+            total_chars += cost
+
+        print(f"  Safe tags : {len(safe_tags)} tags — {safe_tags[:5]}...")
+        body["snippet"]["tags"] = safe_tags
+        try:
+            response = run_upload(body)
+        except ResumableUploadError as e2:
+            if "invalidTags" in str(e2):
+                # Attempt 3 — no tags at all (upload always succeeds)
+                print(f"\n  WARNING : still failing — uploading with no tags...")
+                body["snippet"]["tags"] = []
+                response = run_upload(body)
+            else:
+                raise
 
     video_id = response["id"]
     print(f"\n  Uploaded  : https://youtube.com/watch?v={video_id}")

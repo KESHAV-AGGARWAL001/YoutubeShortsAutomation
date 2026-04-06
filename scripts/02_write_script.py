@@ -26,6 +26,22 @@ load_dotenv()
 client = genai.Client()
 MODEL = "gemini-2.5-flash"
 
+# ── Core channel tags — always included, always valid, total ≤ 200 chars ──
+# These are prepended to every upload so at minimum these tags are always sent.
+CORE_TAGS = [
+    "shorts", "youtubeshorts", "motivation", "mindset", "discipline",
+    "selfimprovement", "success", "mentalstrength", "habits", "growthmindset",
+    "personaldevelopment", "consistency", "focus", "hustle", "stoicism",
+    "dailymotivation", "successmindset", "productivity", "selfhelp", "inspiration",
+]
+
+# ── Fallback hashtag block appended to description if AI omits it ──
+FALLBACK_HASHTAGS = (
+    "#Shorts #YouTubeShorts #motivation #mindset #selfimprovement "
+    "#discipline #success #mentalstrength #habits #growthmindset "
+    "#personaldevelopment #consistency #hustle #stoicism #dailymotivation"
+)
+
 def get_book_page():
     books_dir = "books"
     if not os.path.exists(books_dir):
@@ -218,8 +234,10 @@ def sanitize_tags(tags):
         tag = str(tag).strip().lstrip('#').strip()
         if not tag:
             continue
-        # Keep only safe characters: letters, digits, spaces, hyphens, apostrophes
-        tag = re.sub(r"[^a-zA-Z0-9 '\-]", '', tag).strip()
+        # Keep only safe characters: letters, digits, spaces, hyphens
+        tag = re.sub(r"[^a-zA-Z0-9 \-]", '', tag).strip()
+        # Collapse multiple spaces into one
+        tag = re.sub(r' +', ' ', tag)
         if not tag:
             continue
         tag = tag[:100] if ' ' in tag else tag[:30]
@@ -332,14 +350,21 @@ Follow for brutal, honest success content that actually changes lives.
 #Shorts #YouTubeShorts #discipline #successmindset #motivation #productivity #wealthmindset #billionairehabits #hustle #noexcuses #hardtruth #selfimprovement #realadvice #mentalstrength #workethhic"
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
-TAG RULES:
+TAG RULES (CRITICAL — READ CAREFULLY):
 ━━━━━━━━━━━━━━━━━━━━━━━━
-Provide EXACTLY 32 tags per short. Mix:
+Provide EXACTLY 32 tags per short. These are YouTube keyword tags, NOT hashtags.
+STRICT FORMAT RULES — violating these will break the upload:
+- NEVER start a tag with # (no #motivation, no #shorts — just write motivation, shorts)
+- NEVER use special characters: no &, no /, no quotes, no emojis, no punctuation
+- ONLY use: letters, numbers, spaces, hyphens
+- Each tag: plain text only, max 2-4 words
+
+Mix these types:
 - Broad (high traffic): "motivation", "self improvement", "mindset", "success", "discipline"
 - Mid (medium traffic): "daily habits", "morning routine", "success mindset", "mental strength"
 - Long-tail (high intent): "how to be disciplined", "how to build good habits", "self improvement tips"
-- Viral names/books: "atomic habits", "stoicism", "david goggins", "alex hormozi", "james clear"
-- Niche: "motivationalvideo", "selfhelp", "personalgrowth", "mindsetshift", "successhabits"
+- Viral names: "atomic habits", "stoicism", "david goggins", "alex hormozi", "james clear"
+- Niche: "motivational video", "self help", "personal growth", "mindset shift", "success habits"
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
 SCRIPT RULES:
@@ -425,17 +450,29 @@ def main():
     with open("output/sections/03_cta.txt", "w", encoding="utf-8") as f:
         f.write(my_short["cta"])
 
+    # Build tag list: CORE_TAGS first (guaranteed valid), then AI tags, then trending
+    tags = list(CORE_TAGS)  # start with always-valid core tags
+    existing_lower = {t.lower() for t in tags}
+
+    for t in my_short.get("tags", []):
+        if t.lower() not in existing_lower:
+            tags.append(t)
+            existing_lower.add(t.lower())
+
     # Inject trending tags (Phase 5) — mix Google Trends keywords into tags
-    tags = my_short["tags"]
     if _TRENDING_AVAILABLE:
         print("\n  Fetching trending tags from Google Trends...")
         trending = get_trending_tags(category="general")
-        # Merge: deduplicate, trending tags at end
-        existing_lower = {t.lower() for t in tags}
         for t in trending:
             if t.lower() not in existing_lower:
                 tags.append(t)
                 existing_lower.add(t.lower())
+
+    # Ensure description always ends with a hashtag block
+    description = my_short.get("description", "")
+    if "#Shorts" not in description and "#shorts" not in description:
+        description = description.rstrip() + "\n\n" + FALLBACK_HASHTAGS
+        print("  [!] AI omitted hashtags — fallback block appended to description")
 
     # Sanitize tags before saving — strip #, special chars, enforce 500-char limit
     tags = sanitize_tags(tags)
@@ -444,7 +481,7 @@ def main():
     # Update seo_data.json
     seo_data = {
         "youtube_title": my_short["youtube_title"],
-        "description": my_short["description"],
+        "description": description,
         "tags": tags,
         "keywords": tags,
         "category": "Education",
