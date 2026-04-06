@@ -44,6 +44,21 @@
       "avg_view_pct": null,
       "last_checked": null,
       "url": "https://youtube.com/shorts/K2_iwosjbvQ"
+    },
+    {
+      "video_id": "BIj-nTe5d5k",
+      "title": "The Brutal Truth About Why You're Still Losing #Shorts",
+      "pattern": "brutal_truth",
+      "angle_type": "direct advice",
+      "category_id": "27",
+      "uploaded_at": "2026-04-06T19:18:32",
+      "views": null,
+      "likes": null,
+      "comments": null,
+      "ctr": null,
+      "avg_view_pct": null,
+      "last_checked": null,
+      "url": "https://youtube.com/shorts/BIj-nTe5d5k"
     }
   ],
   "pattern_stats": {}
