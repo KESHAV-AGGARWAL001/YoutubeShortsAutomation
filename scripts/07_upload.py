@@ -73,33 +73,38 @@ def get_publish_time():
 def sanitize_tags(tags):
     """
     Clean tags to satisfy YouTube Data API requirements:
+    - Strip leading # (YouTube tags must NOT start with #)
     - Strip whitespace, remove empty tags
-    - Remove tags with forbidden characters (<, >, ", newlines)
+    - Remove forbidden characters (<, >, ", &, newlines, emojis)
     - Truncate: single-word tags ≤ 30 chars, multi-word ≤ 100 chars
     - Total combined length of all tags ≤ 500 characters
     """
     import re
     cleaned = []
     for tag in tags:
-        tag = tag.strip()
+        tag = str(tag).strip()
+        # Strip leading # — YouTube tags must not start with #
+        tag = tag.lstrip('#').strip()
         if not tag:
             continue
-        # Remove forbidden characters
-        tag = re.sub(r'[<>"\r\n]', '', tag).strip()
+        # Remove forbidden / problematic characters
+        tag = re.sub(r'[<>\"&\r\n]', '', tag).strip()
+        # Strip emoji and non-ASCII characters
+        tag = re.sub(r'[^\x00-\x7F]+', '', tag).strip()
         if not tag:
             continue
-        # Truncate by word count
+        # Truncate per YouTube limits
         if ' ' in tag:
             tag = tag[:100]
         else:
             tag = tag[:30]
         cleaned.append(tag)
 
-    # Enforce 500-char total limit (YouTube counts chars, not tags)
+    # Enforce 500-char total limit (sum of all tag lengths)
     result = []
     total = 0
     for tag in cleaned:
-        if total + len(tag) + 1 > 500:  # +1 for comma separator
+        if total + len(tag) + 1 > 500:
             break
         result.append(tag)
         total += len(tag) + 1
