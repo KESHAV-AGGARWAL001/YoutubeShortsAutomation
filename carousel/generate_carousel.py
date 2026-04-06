@@ -20,20 +20,14 @@ import argparse
 import textwrap
 from datetime import datetime
 from dotenv import load_dotenv
-import google.generativeai as genai
+from google import genai
 
 # Load .env from parent directory
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-MODEL   = "gemini-2.0-flash"
-_model  = genai.GenerativeModel(
-    model_name=MODEL,
-    generation_config=genai.GenerationConfig(
-        temperature=0.85,
-        max_output_tokens=4096,
-    )
-)
+# API key is read automatically from GEMINI_API_KEY environment variable
+client = genai.Client()
+MODEL  = "gemini-2.5-flash"
 
 CAROUSELS_DIR = os.path.join(os.path.dirname(__file__), "carousels")
 REGISTRY_PATH = os.path.join(CAROUSELS_DIR, "carousel_registry.json")
@@ -197,7 +191,7 @@ def hex_to_rgb(hex_color):
 
 def ask_gemini(prompt, max_tokens=4096):
     """Send prompt to Gemini and return cleaned text."""
-    response = _model.generate_content(prompt)
+    response = client.models.generate_content(model=MODEL, contents=prompt)
     text = response.text.strip()
     if "```json" in text:
         text = text.split("```json")[1].split("```")[0].strip()

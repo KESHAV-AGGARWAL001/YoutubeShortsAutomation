@@ -25,19 +25,13 @@ import random
 import argparse
 from datetime import datetime, date, timedelta
 from dotenv import load_dotenv
-import google.generativeai as genai
+from google import genai
 
 load_dotenv()
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-MODEL   = "gemini-2.0-flash"
-_model  = genai.GenerativeModel(
-    model_name=MODEL,
-    generation_config=genai.GenerationConfig(
-        temperature=0.85,
-        max_output_tokens=4096,
-    )
-)
+# API key is read automatically from GEMINI_API_KEY environment variable
+client = genai.Client()
+MODEL  = "gemini-2.5-flash"
 
 SERIES_DIR  = "story_series"
 REGISTRY    = os.path.join(SERIES_DIR, "series_registry.json")
@@ -87,7 +81,7 @@ CATEGORIES = {
 
 def ask_gemini(prompt, max_tokens=4096):
     """Send prompt to Gemini and return cleaned text."""
-    response = _model.generate_content(prompt)
+    response = client.models.generate_content(model=MODEL, contents=prompt)
     text = response.text.strip()
     # Strip markdown code fences
     if "```json" in text:

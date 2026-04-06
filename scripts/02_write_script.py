@@ -3,7 +3,7 @@ import sys
 import json
 from datetime import datetime
 from dotenv import load_dotenv
-import google.generativeai as genai
+from google import genai
 import PyPDF2
 
 # Trending tag injector (Phase 5) and analytics (Phase 6)
@@ -21,15 +21,9 @@ except ImportError:
     _ANALYTICS_AVAILABLE = False
 
 load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-MODEL = "gemini-2.0-flash"
-_model = genai.GenerativeModel(
-    model_name=MODEL,
-    generation_config=genai.GenerationConfig(
-        temperature=0.85,
-        max_output_tokens=8192,
-    )
-)
+# API key is read automatically from GEMINI_API_KEY environment variable
+client = genai.Client()
+MODEL = "gemini-2.5-flash"
 
 def get_book_page():
     books_dir = "books"
@@ -111,7 +105,7 @@ def get_book_page():
     return page_text.strip(), current_book
 
 def ask_gemini(prompt, max_tokens=8192):
-    response = _model.generate_content(prompt)
+    response = client.models.generate_content(model=MODEL, contents=prompt)
     text = response.text.strip()
     if "```json" in text:
         text = text.split("```json")[1].split("```")[0].strip()
