@@ -6,6 +6,20 @@ from dotenv import load_dotenv
 from groq import Groq
 import PyPDF2
 
+# Trending tag injector (Phase 5) and analytics (Phase 6)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    from get_trending_tags import get_trending_tags
+    _TRENDING_AVAILABLE = True
+except ImportError:
+    _TRENDING_AVAILABLE = False
+
+try:
+    from analytics_tracker import get_top_patterns
+    _ANALYTICS_AVAILABLE = True
+except ImportError:
+    _ANALYTICS_AVAILABLE = False
+
 load_dotenv()
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 MODEL = "llama-3.3-70b-versatile"
@@ -127,49 +141,155 @@ def parse_json_safe(text, retries_left=2, prompt=None):
             return parse_json_safe(new_text, retries_left - 1, prompt)
         raise ValueError(f"Failed to parse JSON. Raw:\n{text[:500]}")
 
-def write_shorts_scripts(book_page_text, book_name):
-    # Clean book name (remove .pdf)
-    clean_name = book_name.replace(".pdf", "").replace("_", " ").title()
-    
-    prompt = f"""You are a top-tier YouTube Growth Expert & Strategist specialized in the USA market.
-Your goal is to build a massive, high-retention brand for {clean_name}.
+def _build_performance_context():
+    """
+    Pull top-performing title patterns from analytics log and format
+    them as context for the Groq prompt (A/B feedback loop).
+    """
+    if not _ANALYTICS_AVAILABLE:
+        return ""
+    try:
+        patterns = get_top_patterns(top_n=3)
+        if not patterns:
+            return ""
+        lines = ["━━━━━━━━━━━━━━━━━━━━━━━━",
+                 "PERFORMANCE INTELLIGENCE (A/B data from your channel — use these patterns MORE):"]
+        for p in patterns:
+            lines.append(
+                f"  ✅ Pattern [{p['pattern']}] — avg {p['avg_views']:,} views | "
+                f"Best title: \"{p['best_title'][:60]}\""
+            )
+        lines.append("Use the winning patterns above more often. Avoid patterns NOT listed here.")
+        return "\n".join(lines) + "\n"
+    except Exception:
+        return ""
 
-INPUT BOOK PAGE TEXT:
+
+def write_shorts_scripts(book_page_text, book_name):
+    performance_context = _build_performance_context()
+
+    prompt = f"""You are a top-tier YouTube Shorts Growth Expert specialized in viral content for the USA market (18-35 audience).
+
+{performance_context}INPUT BOOK PAGE TEXT (use concepts and wisdom from this — but NEVER mention the book name):
 {book_page_text}
 
-MISSION:
-Transform this dry text into 2 viral YouTube Shorts (USA Target 18-35).
-One must be EMOTIONAL/STORYTELLING.
-One must be DIRECT ADVICE / "HARD TRUTH".
+MISSION: Transform this into 2 viral YouTube Shorts.
+- Short 1: EMOTIONAL / STORYTELLING angle
+- Short 2: DIRECT ADVICE / "HARD TRUTH" angle
 
-RULES FOR ELITE CONTENT:
-1. TITLES: Use "fancy", curiosity-driven terms. MUST follow format "{clean_name}: [Viral Subtitle]".
-   Example: "{clean_name}: The Habit That Will Bankrupt You" or "{clean_name}: Why You're Losing The War."
-2. DESCRIPTION: Write a high-engaging, SEO-rich description using industrial "fancy" terms.
-   Include a curiosity gap: "Most people fail because [concept]... but when you master this..."
-3. HASHTAGS: Use at least 15 relevant, high-traffic hashtags specific to the shorts niche (e.g. #wealthmindset #stoicism #discipline #successsecrets).
-4. SCRIPT: American English, short sentences, high-pacing. 0% robotic.
+━━━━━━━━━━━━━━━━━━━━━━━━
+TITLE RULES (CRITICAL FOR ALGORITHM):
+━━━━━━━━━━━━━━━━━━━━━━━━
+- NEVER include the book name. Nobody searches for a book they haven't read.
+- ALWAYS end the title with #Shorts (YouTube algorithm signal).
+- Keep under 60 characters (mobile display limit).
+- Create curiosity WITHOUT revealing the answer.
+- Use one of these proven viral patterns:
 
-Respond in this exact JSON format:
+  EMOTIONAL patterns:
+  • "Nobody Told Me This Would Change Everything #Shorts"
+  • "I Wish Someone Had Told Me This Sooner #Shorts"
+  • "The Lesson That Actually Changed My Life #Shorts"
+  • "What Winners Do That Nobody Ever Sees #Shorts"
+  • "One Story That Will Rewire Your Brain #Shorts"
+  • "The Mindset Shift That Changes Everything #Shorts"
+
+  ADVICE patterns:
+  • "Stop Doing This If You Want to Actually Win #Shorts"
+  • "The Brutal Truth About Why You're Still Losing #Shorts"
+  • "99% of People Get This Completely Wrong #Shorts"
+  • "This Is Exactly Why You're Still Struggling #Shorts"
+  • "You're 1 Decision Away From Changing Everything #Shorts"
+  • "What Nobody Tells You About [topic] #Shorts"
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+DESCRIPTION RULES (CRITICAL FOR SEO):
+━━━━━━━━━━━━━━━━━━━━━━━━
+YouTube only shows 1-2 lines before "Show more" — those lines are your SEO goldmine.
+
+EXACT STRUCTURE (follow precisely):
+Line 1: [Primary keyword phrase] — [direct benefit or shocking fact, under 95 chars]
+Line 2: [Secondary keyword phrase] | [curiosity gap or stat that hooks them]
+Line 3: (blank)
+Line 4: Hook text from the video
+Line 5-8: 3-4 sentences of value/context
+Line 9: (blank)
+Line 10: Follow for daily [topic] content that actually works.
+Line 11: 🔔 Subscribe — new short every single day
+Line 12: 👍 Like if this hit different
+Line 13: 💾 Save this — you'll need it when life gets hard
+Line 14: (blank)
+Line 15: HASHTAG BLOCK — exactly 15 hashtags, starting with #Shorts #YouTubeShorts then niche-specific
+
+EMOTIONAL description example:
+"How to build a success mindset that separates winners from everyone else
+Success mindset secrets | The habit 92% of people skip but winners never do
+
+[hook text]
+[content value]
+
+Follow for daily mindset content that hits different every time.
+🔔 Subscribe — new short every day
+👍 Like if this hit different
+💾 Save this for when you need it most
+
+#Shorts #YouTubeShorts #motivation #mindset #selfimprovement #discipline #successmindset #growthmindset #personaldevelopment #dailyhabits #mentalstrength #stoicism #motivationalvideo #consistency #inspiration"
+
+ADVICE description example:
+"The no-nonsense discipline guide that top 1% use and nobody else will tell you
+Daily discipline tips | 87% of people fail here — here is exactly how to fix it
+
+[hook text]
+[content value]
+
+Follow for brutal, honest success content that actually changes lives.
+🔔 Subscribe — daily mindset drops
+👍 Like if this woke you up
+💾 Save this — share it with someone who needs it
+
+#Shorts #YouTubeShorts #discipline #successmindset #motivation #productivity #wealthmindset #billionairehabits #hustle #noexcuses #hardtruth #selfimprovement #realadvice #mentalstrength #workethhic"
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+TAG RULES:
+━━━━━━━━━━━━━━━━━━━━━━━━
+Provide EXACTLY 32 tags per short. Mix:
+- Broad (high traffic): "motivation", "self improvement", "mindset", "success", "discipline"
+- Mid (medium traffic): "daily habits", "morning routine", "success mindset", "mental strength"
+- Long-tail (high intent): "how to be disciplined", "how to build good habits", "self improvement tips"
+- Viral names/books: "atomic habits", "stoicism", "david goggins", "alex hormozi", "james clear"
+- Niche: "motivationalvideo", "selfhelp", "personalgrowth", "mindsetshift", "successhabits"
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+SCRIPT RULES:
+━━━━━━━━━━━━━━━━━━━━━━━━
+- American English, short punchy sentences, zero robotic phrasing
+- First line = hook (must make them STOP scrolling in 1 second)
+- High pacing — every sentence must earn its place
+- 45-55 seconds of speaking content (about 120-140 words)
+- End with a thought-provoking statement, not a question
+
+Respond in this EXACT JSON format — no extra text outside the JSON:
 {{
     "shorts": [
         {{
             "angle_type": "emotional storytelling",
-            "youtube_title": "{clean_name}: Viral Subtitle",
-            "description": "Fancy engaging SEO description with curiosity gaps",
-            "hook": "hook text",
-            "script": "full script",
-            "cta": "subtle viral CTA",
-            "tags": ["shorts", "mindset", "success", "... 12 more tags"]
+            "youtube_title": "Viral title under 60 chars ending with #Shorts",
+            "description": "Full description following the exact structure above",
+            "hook": "First punchy line that stops the scroll",
+            "script": "Full 120-140 word narration script",
+            "cta": "Subtle viral call to action",
+            "tags": ["shorts", "youtubeshorts", "... exactly 30 more unique tags"],
+            "category_id": "22"
         }},
         {{
             "angle_type": "direct advice",
-            "youtube_title": "{clean_name}: Viral Subtitle",
-            "description": "Fancy engaging SEO description with curiosity gaps",
-            "hook": "hook text",
-            "script": "full script",
-            "cta": "subtle viral CTA",
-            "tags": ["shorts", "discipline", "money", "... 12 more tags"]
+            "youtube_title": "Viral title under 60 chars ending with #Shorts",
+            "description": "Full description following the exact structure above",
+            "hook": "First punchy line that stops the scroll",
+            "script": "Full 120-140 word narration script",
+            "cta": "Subtle viral call to action",
+            "tags": ["shorts", "youtubeshorts", "... exactly 30 more unique tags"],
+            "category_id": "27"
         }}
     ]
 }}
@@ -223,13 +343,27 @@ def main():
     with open("output/sections/03_cta.txt", "w", encoding="utf-8") as f:
         f.write(my_short["cta"])
 
+    # Inject trending tags (Phase 5) — mix Google Trends keywords into tags
+    tags = my_short["tags"]
+    if _TRENDING_AVAILABLE:
+        print("\n  Fetching trending tags from Google Trends...")
+        trending = get_trending_tags(category="general")
+        # Merge: deduplicate, trending tags at end
+        existing_lower = {t.lower() for t in tags}
+        for t in trending:
+            if t.lower() not in existing_lower:
+                tags.append(t)
+                existing_lower.add(t.lower())
+
     # Update seo_data.json
     seo_data = {
         "youtube_title": my_short["youtube_title"],
-        "description": my_short["description"], 
-        "tags": my_short["tags"],
-        "keywords": my_short["tags"],
-        "category": "Education"
+        "description": my_short["description"],
+        "tags": tags,
+        "keywords": tags,
+        "category": "Education",
+        "category_id": my_short.get("category_id", "27"),
+        "angle_type": my_short.get("angle_type", ""),
     }
     with open("output/seo_data.json", "w", encoding="utf-8") as f:
         json.dump(seo_data, f, indent=2, ensure_ascii=False)

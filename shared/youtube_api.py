@@ -12,10 +12,20 @@ YouTube OAuth Setup:
 """
 
 import os
+import sys
 import pickle
 import time
 from datetime import datetime
 from dotenv import load_dotenv
+
+# Trending tag injector (Phase 5)
+_scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts")
+sys.path.insert(0, _scripts_dir)
+try:
+    from get_trending_tags import get_trending_tags as _get_trending_tags
+    _TRENDING_AVAILABLE = True
+except ImportError:
+    _TRENDING_AVAILABLE = False
 
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -83,23 +93,65 @@ def build_youtube_metadata(part_script, series_meta, part_num, total_parts):
     """
     series_title = series_meta.get("series_title", "")
     category     = series_meta.get("category", "").replace("_", " ").title()
+    cat_key      = series_meta.get("category", "")
     script_hook  = part_script.get("hook", "")
     cliffhanger  = part_script.get("cliffhanger", "")
 
-    # ── Title (under 100 chars) ──────────────────────────────────
-    base_title = f"{series_title} | Part {part_num}/{total_parts}"
-    if len(base_title) < 80 and script_hook:
-        hook_preview = script_hook[:50].rstrip()
-        candidate    = f"{base_title} — {hook_preview}"
-        title        = candidate if len(candidate) <= 100 else base_title
+    # ── Title (under 60 chars for mobile, #Shorts at end) ───────
+    # Format: "Series Title Part X/Y — Hook Preview #Shorts"
+    base_title = f"{series_title} | Part {part_num}/{total_parts} #Shorts"
+    if len(base_title) < 55 and script_hook:
+        hook_preview = script_hook[:30].rstrip()
+        candidate    = f"{series_title} — {hook_preview} #Shorts"
+        title        = candidate if len(candidate) <= 60 else base_title
     else:
-        title = base_title[:100]
+        title = base_title[:97]  # API hard limit 100
+
+    # ── Keyword phrases per category for first 2 SEO lines ───────
+    category_seo_lines = {
+        "discipline_habits": (
+            "Daily discipline habits that separate the top 1% from everyone else",
+            "Self discipline tips | The morning routine habit 90% of people skip"
+        ),
+        "mental_strength": (
+            "How to build unbreakable mental strength when life gets hard",
+            "Mental toughness training | What winners do that nobody ever talks about"
+        ),
+        "success_mindset": (
+            "The success mindset secrets billionaires use every single day",
+            "Wealth mindset & growth habits | Why 95% of people stay stuck forever"
+        ),
+        "life_philosophy": (
+            "Stoic life philosophy that will completely rewire how you think",
+            "Stoicism & purpose | Ancient wisdom that modern self-help ignores"
+        ),
+        "overcoming_failure": (
+            "How to overcome failure and bounce back stronger than before",
+            "Resilience mindset | The comeback strategy that actually works"
+        ),
+        "focus_productivity": (
+            "Deep work and focus habits that 10x your output every single day",
+            "Productivity secrets | How to eliminate distractions and enter flow state"
+        ),
+    }
+    seo_line1, seo_line2 = category_seo_lines.get(
+        cat_key,
+        (
+            "Daily mindset and self-improvement content that actually changes lives",
+            "Success habits & motivation | What the top 1% do differently every day"
+        )
+    )
 
     # ── Description ─────────────────────────────────────────────
+    # First 2 lines are the SEO goldmine — keyword-rich, no emojis
     ig_caption = part_script.get("caption", "")
     cta        = part_script.get("cta", "").replace("Comment", "Comment below")
 
-    desc_lines = []
+    desc_lines = [
+        seo_line1,
+        seo_line2,
+        "",
+    ]
 
     if script_hook:
         desc_lines.append(script_hook)
@@ -109,16 +161,15 @@ def build_youtube_metadata(part_script, series_meta, part_num, total_parts):
         desc_lines.append(ig_caption)
         desc_lines.append("")
 
-    desc_lines.append(f"📖 {series_title}")
-    desc_lines.append(f"   This is Part {part_num} of {total_parts}")
+    desc_lines.append(f"📖 {series_title} — Part {part_num} of {total_parts}")
     if part_num > 1:
-        desc_lines.append(f"   ← Watch Part {part_num - 1} first!")
+        desc_lines.append(f"   ← Watch Part {part_num - 1} first for full context!")
     if part_num < total_parts:
-        desc_lines.append(f"   Part {part_num + 1} drops tomorrow 🔔")
+        desc_lines.append(f"   🔔 Part {part_num + 1} drops tomorrow — subscribe so you don't miss it")
     desc_lines.append("")
 
     if cliffhanger and part_num < total_parts:
-        desc_lines.append(f"🎯 Coming up: {cliffhanger}")
+        desc_lines.append(f"🎯 Coming next: {cliffhanger}")
         desc_lines.append("")
 
     if cta:
@@ -126,42 +177,109 @@ def build_youtube_metadata(part_script, series_meta, part_num, total_parts):
         desc_lines.append("")
 
     desc_lines.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    desc_lines.append("🔔 Subscribe for daily mindset content")
+    desc_lines.append("Follow @nextlevelmind for daily mindset content that hits different.")
+    desc_lines.append("🔔 Subscribe — new short every single day")
     desc_lines.append("👍 Like if this hit different")
     desc_lines.append("💾 Save this for when you need it most")
+    desc_lines.append("📌 Share with someone who needs to hear this")
     desc_lines.append("")
-    desc_lines.append("#Shorts #YouTubeShorts #nextlevelmind")
+
+    # ── Hashtag block — first hashtag becomes video's label on Shorts feed
+    hashtag_map = {
+        "discipline_habits":  "#Shorts #YouTubeShorts #discipline #selfimprovement #dailyhabits #morningroutine #mindset #consistency #motivation #selfcontrol",
+        "mental_strength":    "#Shorts #YouTubeShorts #mentalstrength #mentaltoughness #mindset #selfimprovement #resilience #motivation #innerstrength #personaldevelopment",
+        "success_mindset":    "#Shorts #YouTubeShorts #successmindset #growthmindset #wealthmindset #motivation #billionairehabits #selfimprovement #mindset #success",
+        "life_philosophy":    "#Shorts #YouTubeShorts #stoicism #lifephilosophy #mindset #motivation #selfimprovement #stoicwisdom #personaldevelopment #purposedriven",
+        "overcoming_failure": "#Shorts #YouTubeShorts #motivation #nevergiveuup #resilience #overcomingfailure #mindset #selfimprovement #bouneback #success",
+        "focus_productivity": "#Shorts #YouTubeShorts #productivity #deepwork #focus #timemanagement #selfimprovement #mindset #discipline #flowstate",
+    }
+    hashtags = hashtag_map.get(
+        cat_key,
+        "#Shorts #YouTubeShorts #motivation #mindset #selfimprovement #discipline #success #personaldevelopment #growthmindset #inspiration"
+    )
+    desc_lines.append(hashtags)
+    desc_lines.append("#nextlevelmind #motivationalvideo #storytime #successhabits #mentalhealth")
 
     description = "\n".join(desc_lines)
 
-    # ── Tags (search-optimized) ──────────────────────────────────
+    # ── Tags (30+ search-optimized) ──────────────────────────────
     category_tags = {
-        "discipline_habits":  ["discipline", "daily habits", "morning routine",
-                               "self discipline", "consistency", "willpower"],
-        "mental_strength":    ["mental strength", "mental toughness", "overcome anxiety",
-                               "build resilience", "mindset", "inner strength"],
-        "success_mindset":    ["success mindset", "billionaire habits", "wealth mindset",
-                               "growth mindset", "think like a winner", "career growth"],
-        "life_philosophy":    ["stoicism", "life philosophy", "find your purpose",
-                               "intentional living", "stoic wisdom"],
-        "overcoming_failure": ["overcoming failure", "bounce back", "resilience",
-                               "starting over", "failure to success", "never give up"],
-        "focus_productivity": ["focus", "deep work", "eliminate distractions",
-                               "flow state", "productivity", "get more done"],
+        "discipline_habits": [
+            "discipline", "daily habits", "morning routine", "self discipline",
+            "consistency", "willpower", "good habits", "how to be disciplined",
+            "self control", "discipline mindset", "build discipline",
+            "morning routine for success", "daily routine", "habits for success",
+            "how to build habits", "discipline tips", "self improvement habits",
+        ],
+        "mental_strength": [
+            "mental strength", "mental toughness", "overcome anxiety",
+            "build resilience", "inner strength", "mindset shift",
+            "how to be mentally strong", "mental health tips",
+            "emotional intelligence", "overcome fear", "mental health motivation",
+            "how to deal with stress", "positive mindset", "mental fortitude",
+            "overcome challenges", "mindset training", "stress management",
+        ],
+        "success_mindset": [
+            "success mindset", "billionaire habits", "wealth mindset",
+            "growth mindset", "think like a winner", "millionaire mindset",
+            "success habits", "how to be successful", "success secrets",
+            "entrepreneur mindset", "self made success", "financial mindset",
+            "abundance mindset", "goal setting", "success tips 2024",
+            "how to think like a billionaire", "winner mindset",
+        ],
+        "life_philosophy": [
+            "stoicism", "life philosophy", "find your purpose",
+            "intentional living", "stoic wisdom", "stoic mindset",
+            "marcus aurelius", "epictetus", "modern stoicism",
+            "life lessons", "wisdom quotes", "philosophical mindset",
+            "meaning of life", "living with purpose", "stoicism 2024",
+            "stoic philosophy", "life changing wisdom",
+        ],
+        "overcoming_failure": [
+            "overcoming failure", "bounce back", "resilience",
+            "starting over", "failure to success", "never give up",
+            "comeback mindset", "success after failure", "how to get back up",
+            "dealing with failure", "turning failure into success",
+            "overcome setbacks", "perseverance", "keep going motivation",
+            "rise after failure", "grit and determination", "never quit",
+        ],
+        "focus_productivity": [
+            "focus", "deep work", "eliminate distractions",
+            "flow state", "productivity", "get more done",
+            "productivity tips", "how to focus better", "time management",
+            "work smarter", "concentration tips", "digital detox",
+            "productivity hacks", "cal newport", "deep work tips",
+            "how to be productive", "focus techniques",
+        ],
     }
 
-    cat_key  = series_meta.get("category", "")
     cat_tags = category_tags.get(cat_key, [])
 
-    base_tags = [
-        "nextlevelmind", "motivation", "shorts", "mindset",
-        "inspiration", "selfimprovement", "personaldevelopment",
-        "motivationalvideo", "storytime",
-        f"part{part_num}of{total_parts}",
-        series_title.lower().replace(" ", ""),
+    # High-traffic evergreen tags always included
+    viral_reference_tags = [
+        "atomic habits", "david goggins", "stoicism", "alex hormozi",
+        "james clear", "jocko willink", "self improvement",
     ]
 
-    tags = list(dict.fromkeys(base_tags + cat_tags))  # deduplicate, preserve order
+    base_tags = [
+        "shorts", "youtubeshorts", "nextlevelmind", "motivation", "mindset",
+        "inspiration", "selfimprovement", "personaldevelopment",
+        "motivationalvideo", "selfhelp", "personalgrowth",
+        f"part{part_num}of{total_parts}",
+        series_title.lower().replace(" ", "")[:30],
+    ]
+
+    tags = list(dict.fromkeys(base_tags + cat_tags + viral_reference_tags))
+
+    # Inject trending tags (Phase 5)
+    if _TRENDING_AVAILABLE:
+        trending = _get_trending_tags(category=cat_key if cat_key else "general")
+        existing_lower = {t.lower() for t in tags}
+        for t in trending:
+            if t.lower() not in existing_lower:
+                tags.append(t)
+                existing_lower.add(t.lower())
+
     return title, description, tags
 
 
@@ -252,7 +370,7 @@ def upload_short(service, video_path, title, description, tags,
             "title":       title,
             "description": description,
             "tags":        tags,
-            "categoryId":  "26",  # Howto & Style — best for motivation content
+            "categoryId":  "27",  # Education — correct for book/mindset content
         },
         "status": {
             "privacyStatus":           "public",
