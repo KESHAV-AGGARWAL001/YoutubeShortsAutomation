@@ -17,12 +17,18 @@ PS D:\YouTubeBot> python test_pipeline.py
 =======================================================
   UNIT TEST: get_trending_tags.py
 =======================================================
-  Trending tags: loaded from cache (8 tags)
-  ✅ [discipline_habits] returned 8 tags: ['discipline over motivation', 'james clear', '75 hard challenge']...
-  Trending tags: loaded from cache (8 tags)
-  ✅ [success_mindset] returned 8 tags: ['billionaire morning routine', 'delayed gratification', 'dopamine detox']...
-  Trending tags: loaded from cache (8 tags)
-  ✅ [general] returned 8 tags: ['jocko willink', 'andrew huberman', 'success secrets 2024']...
+  Trending tags: fetching from Google Trends (category: discipline_habits)...
+  Trending tags: pytrends failed (TypeError) — using evergreen list
+  Trending tags: using evergreen list (8 tags)
+  ✅ [discipline_habits] returned 8 tags: ['discipline over motivation', 'habit stacking', 'atomic habits']...
+  Trending tags: fetching from Google Trends (category: success_mindset)...
+  Trending tags: pytrends failed (TypeError) — using evergreen list
+  Trending tags: using evergreen list (8 tags)
+  ✅ [success_mindset] returned 8 tags: ['delayed gratification', 'andrew huberman', 'think and grow rich']...
+  Trending tags: fetching from Google Trends (category: general)...
+  Trending tags: pytrends failed (TypeError) — using evergreen list
+  Trending tags: using evergreen list (8 tags)
+  ✅ [general] returned 8 tags: ['discipline mindset', 'atomic habits', 'success secrets 2024']...
 
 =======================================================
   UNIT TEST: analytics_tracker.py (dry run)
@@ -31,12 +37,12 @@ PS D:\YouTubeBot> python test_pipeline.py
   Pattern Detection Tests:
   ✅ "Stop Doing This If You Want to Win #Shorts..." → [stop_doing]
   ✅ "Nobody Told Me This Would Change Everything #..." → [nobody_told_me]
-  ❌ "The Brutal Truth About Why You're Losing #Sho..." → [the_lesson] (expected [brutal_truth])
+  ✅ "The Brutal Truth About Why You're Losing #Sho..." → [brutal_truth]
   ✅ "99% of People Get This Completely Wrong #Shor..." → [99_percent]
   ✅ "I Wish Someone Had Told Me This Sooner #Short..." → [i_wish_i_knew]
 
   Log Upload Test (fake video):
-  Analytics: TEST_VIDEO_DRY_RUN already in log
+  Analytics: Logged 'Stop Doing This If You Want to Win #Shorts...' (pattern: stop_doing)
   ✅ log_upload() created entry for TEST_VIDEO_DRY_RUN
   ✅ get_top_patterns() returned 0 patterns (empty is OK — no real data yet)
 
@@ -53,91 +59,131 @@ PS D:\YouTubeBot> python test_pipeline.py
 ==================================================
 
   Video        : #1
-  [+] Reading from Atomic_habits.pdf (PDF Pages: 14 and 15)
+  [+] Reading from Atomic_habits.pdf (PDF Pages: 16 and 17)
 
 [1/3] Generating 2 shorts from book page...
-  WARNING: JSON parse failed - Invalid control character at: line 6 column 104 (char 246)
-  Retrying... (2 attempts left)
-  WARNING: JSON parse failed - Invalid control character at: line 6 column 96 (char 225)
-  Retrying... (1 attempts left)
-  WARNING: JSON parse failed - Invalid control character at: line 6 column 104 (char 233)
+  Angle    : emotional storytelling
+  YT Title : I Wish I Knew This #Shorts
+
+[2/3] Saving text sections...
+
+  Fetching trending tags from Google Trends...
+  Trending tags: loaded from cache (8 tags)
+
+[3/3] Done!
+==================================================
+
+  Next step: Run 03_voiceover.py
+
+=======================================================
+  STEP 2/5: Edge TTS voiceover
+=======================================================
+==================================================
+  Voiceover Generator — Microsoft Edge TTS
+  100% Free · Unlimited · No API Key · Local
+  Voice: en-US-GuyNeural
+==================================================
+
+  Found 3 script sections
+
+[1/3] Generating: 01_hook...
+  Saved: output/voiceovers/01_hook.mp3 (46 KB)
+[2/3] Generating: 02_script...
+  Saved: output/voiceovers/02_script.mp3 (231 KB)
+[3/3] Generating: 03_cta...
+  Saved: output/voiceovers/03_cta.mp3 (17 KB)
+
+==================================================
+  Done! 3/3 sections generated
+  Files saved in output/voiceovers/
+==================================================
+
+  Next step: Run 04_get_footage.py
+
+=======================================================
+  STEP 3/5: Footage selection + subtitle timings
+=======================================================
+==================================================
+  Footage Manager — Black Background Mode
+==================================================
+
+  Skipping stock footage scanning (using solid black video).
+
+  Checking voiceover duration...
+  Required: 50.3s (0.8 mins)
+
+  Calculating subtitle timings...
+    01_hook: 0.0s → 7.9s  (20 words)
+    02_script: 7.9s → 47.4s  (103 words)
+    03_cta: 47.4s → 50.3s  (5 words)
+
+==================================================
+  Done!
+  Background: Pure Black Video
+==================================================
+
+  Next step: Run 05_make_video.py
+
+=======================================================
+  STEP 4/5: Video assembly + SRT subtitle file
+=======================================================
+==================================================
+  Video Assembler — FFmpeg
+  loop bg + clean + subs + end card + music
+==================================================
+
+[1/5] Merging voiceover sections...
+  Voiceover merged: 50.3s (0.8 mins)
+
+[2/5] Recalculating subtitle timings...
+  Recalculated timings for 3 sections (total 50.3s)
+
+[3/5] Assembling video (clean + YouTube subtitles)...
+  Using pure black background as requested.
+  Building subtitle file for 3 sections...
+  SRT subtitle file: 9 entries
+  Assembling 50.3s of clean video (no subtitles)...
+  Clean video (no subs): 0 MB
+  Burning YouTube subtitles (bottom, large)...
+  YouTube video (with subs): 1 MB
+
+[4/5] Skipping end card (overwriting disabled)...
+
+[5/5] Mixing background music (YouTube + Reel versions)...
+  Mixing music into YouTube version...
+  YouTube video (subs + music): 1 MB
+  Mixing music into reel version (no subtitles)...
+  Reel source  (clean + music): 0 MB
+
+==================================================
+  Done! Both versions ready
+  Duration : 50.3s (0.8 mins)
+  YouTube  : output/final_video.mp4 (1 MB)
+  Reel src : output/video_for_reel.mp4 (0 MB)
+==================================================
+
+  Next step: Run 06_thumbnail.py
+
+=======================================================
+  STEP 5/5: Dark cinematic thumbnail (new design)
+=======================================================
+==================================================
+  Thumbnail Generator — High CTR Design
+  Style: Dark cinematic + Yellow accent + Red bar
+==================================================
 Traceback (most recent call last):
-  File "D:\YouTubeBot\scripts\02_write_script.py", line 122, in parse_json_safe
-    return json.loads(text)
-           ~~~~~~~~~~^^^^^^
-  File "C:\Python314\Lib\json\__init__.py", line 352, in loads
-    return _default_decoder.decode(s)
-           ~~~~~~~~~~~~~~~~~~~~~~~^^^
-  File "C:\Python314\Lib\json\decoder.py", line 345, in decode
-    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
-               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Python314\Lib\json\decoder.py", line 361, in raw_decode
-    obj, end = self.scan_once(s, idx)
-               ~~~~~~~~~~~~~~^^^^^^^^
-json.decoder.JSONDecodeError: Invalid control character at: line 6 column 104 (char 246)
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "D:\YouTubeBot\scripts\02_write_script.py", line 122, in parse_json_safe
-    return json.loads(text)
-           ~~~~~~~~~~^^^^^^
-  File "C:\Python314\Lib\json\__init__.py", line 352, in loads
-    return _default_decoder.decode(s)
-           ~~~~~~~~~~~~~~~~~~~~~~~^^^
-  File "C:\Python314\Lib\json\decoder.py", line 345, in decode
-    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
-               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Python314\Lib\json\decoder.py", line 361, in raw_decode
-    obj, end = self.scan_once(s, idx)
-               ~~~~~~~~~~~~~~^^^^^^^^
-json.decoder.JSONDecodeError: Invalid control character at: line 6 column 96 (char 225)
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "D:\YouTubeBot\scripts\02_write_script.py", line 122, in parse_json_safe
-    return json.loads(text)
-           ~~~~~~~~~~^^^^^^
-  File "C:\Python314\Lib\json\__init__.py", line 352, in loads
-    return _default_decoder.decode(s)
-           ~~~~~~~~~~~~~~~~~~~~~~~^^^
-  File "C:\Python314\Lib\json\decoder.py", line 345, in decode
-    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
-               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Python314\Lib\json\decoder.py", line 361, in raw_decode
-    obj, end = self.scan_once(s, idx)
-               ~~~~~~~~~~~~~~^^^^^^^^
-json.decoder.JSONDecodeError: Invalid control character at: line 6 column 104 (char 233)
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "D:\YouTubeBot\scripts\02_write_script.py", line 380, in <module>
+  File "D:\YouTubeBot\scripts\06_thumbnail.py", line 265, in <module>
     main()
     ~~~~^^
-  File "D:\YouTubeBot\scripts\02_write_script.py", line 315, in main
-    script_data = write_shorts_scripts(book_page_text, current_book_name)
-  File "D:\YouTubeBot\scripts\02_write_script.py", line 299, in write_shorts_scripts
-    return parse_json_safe(text, retries_left=2, prompt=prompt)
-  File "D:\YouTubeBot\scripts\02_write_script.py", line 141, in parse_json_safe
-    return parse_json_safe(new_text, retries_left - 1, prompt)
-  File "D:\YouTubeBot\scripts\02_write_script.py", line 141, in parse_json_safe
-    return parse_json_safe(new_text, retries_left - 1, prompt)
-  File "D:\YouTubeBot\scripts\02_write_script.py", line 142, in parse_json_safe
-    raise ValueError(f"Failed to parse JSON. Raw:\n{text[:500]}")
-ValueError: Failed to parse JSON. Raw:
-{
-    "shorts": [
-        {
-            "angle_type": "emotional storytelling",
-            "youtube_title": "1% Change #Shorts",
-            "description": "Success mindset secrets — The habit 92% of people skip but winners never do
-Small changes | The story of how one team dominated their sport with tiny adjustments
+  File "D:\YouTubeBot\scripts\06_thumbnail.py", line 246, in main
+    seo = json.load(f)
+  File "C:\Python314\Lib\json\__init__.py", line 298, in load
+    return loads(fp.read(),
+                 ~~~~~~~^^
+  File "C:\Python314\Lib\encodings\cp1252.py", line 23, in decode
+    return codecs.charmap_decode(input,self.errors,decoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeDecodeError: 'charmap' codec can't decode byte 0x8d in position 660: character maps to <undefined>
 
-Imagine being part of a team that was considered a joke, but then became unstoppable.
-This is the story of how small changes can add up to make a big difference.
-The team's new
-
-  ERROR in 02_write_script.py. Stopping pipeline.
+  ERROR in 06_thumbnail.py. Stopping pipeline.
 PS D:\YouTubeBot>
