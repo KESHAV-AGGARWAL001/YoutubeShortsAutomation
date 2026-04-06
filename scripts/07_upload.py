@@ -70,6 +70,43 @@ def get_publish_time():
     return fallback_str
 
 
+def sanitize_tags(tags):
+    """
+    Clean tags to satisfy YouTube Data API requirements:
+    - Strip whitespace, remove empty tags
+    - Remove tags with forbidden characters (<, >, ", newlines)
+    - Truncate: single-word tags ≤ 30 chars, multi-word ≤ 100 chars
+    - Total combined length of all tags ≤ 500 characters
+    """
+    import re
+    cleaned = []
+    for tag in tags:
+        tag = tag.strip()
+        if not tag:
+            continue
+        # Remove forbidden characters
+        tag = re.sub(r'[<>"\r\n]', '', tag).strip()
+        if not tag:
+            continue
+        # Truncate by word count
+        if ' ' in tag:
+            tag = tag[:100]
+        else:
+            tag = tag[:30]
+        cleaned.append(tag)
+
+    # Enforce 500-char total limit (YouTube counts chars, not tags)
+    result = []
+    total = 0
+    for tag in cleaned:
+        if total + len(tag) + 1 > 500:  # +1 for comma separator
+            break
+        result.append(tag)
+        total += len(tag) + 1
+
+    return result
+
+
 def upload_video(youtube):
     with open("output/seo_data.json", encoding="utf-8") as f:
         seo = json.load(f)
@@ -89,11 +126,13 @@ def upload_video(youtube):
     # Fallback: 27 = Education (best for book/mindset content)
     category_id = str(seo.get("category_id", "27"))
 
+    tags = sanitize_tags(seo.get("tags", []))
+
     body = {
         "snippet": {
             "title":       seo["youtube_title"],
             "description": seo["description"],
-            "tags":        seo["tags"],
+            "tags":        tags,
             "categoryId":  category_id,
         },
         "status": {
