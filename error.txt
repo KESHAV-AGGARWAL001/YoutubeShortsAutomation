@@ -343,3 +343,7 @@ googleapiclient.errors.ResumableUploadError: <HttpError 400 when requesting None
   Studio: https://studio.youtube.com
 ==================================================
 PS D:\YouTubeBot>                                                                                                                                                                                                                                                                                                                                                       
+
+
+
+This video contains copyrighted material. As a result, it has been blocked worldwide.
