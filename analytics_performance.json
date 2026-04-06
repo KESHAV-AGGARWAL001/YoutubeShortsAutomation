@@ -14,6 +14,36 @@
       "avg_view_pct": null,
       "last_checked": null,
       "url": "https://youtube.com/shorts/TEST_VIDEO_DRY_RUN"
+    },
+    {
+      "video_id": "LIp4Vu7b90M",
+      "title": "I Wish I Knew This #Shorts",
+      "pattern": "i_wish_i_knew",
+      "angle_type": "emotional storytelling",
+      "category_id": "22",
+      "uploaded_at": "2026-04-06T18:17:05",
+      "views": null,
+      "likes": null,
+      "comments": null,
+      "ctr": null,
+      "avg_view_pct": null,
+      "last_checked": null,
+      "url": "https://youtube.com/shorts/LIp4Vu7b90M"
+    },
+    {
+      "video_id": "K2_iwosjbvQ",
+      "title": "Stop Doing This #Shorts",
+      "pattern": "stop_doing",
+      "angle_type": "direct advice",
+      "category_id": "27",
+      "uploaded_at": "2026-04-06T18:17:58",
+      "views": null,
+      "likes": null,
+      "comments": null,
+      "ctr": null,
+      "avg_view_pct": null,
+      "last_checked": null,
+      "url": "https://youtube.com/shorts/K2_iwosjbvQ"
     }
   ],
   "pattern_stats": {}
