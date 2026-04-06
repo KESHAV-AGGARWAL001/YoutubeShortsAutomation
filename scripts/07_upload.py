@@ -72,7 +72,7 @@ def get_publish_time():
 
 
 def upload_video(youtube):
-    with open("output/seo_data.json") as f:
+    with open("output/seo_data.json", encoding="utf-8") as f:
         seo = json.load(f)
 
     scheduled_time = get_publish_time()

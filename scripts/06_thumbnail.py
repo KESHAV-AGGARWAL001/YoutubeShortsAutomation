@@ -242,7 +242,7 @@ def main():
         print("\n  ERROR: output/seo_data.json not found!")
         return
 
-    with open("output/seo_data.json") as f:
+    with open("output/seo_data.json", encoding="utf-8") as f:
         seo = json.load(f)
 
     title = seo["youtube_title"]
