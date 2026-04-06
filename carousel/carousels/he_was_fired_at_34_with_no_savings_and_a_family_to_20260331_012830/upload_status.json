@@ -1,0 +1,27 @@
+{
+  "carousel_id": "he_was_fired_at_34_with_no_savings_and_a_family_to_20260331_012830",
+  "status": "uploaded",
+  "uploaded_at": "2026-03-31T01:31:14",
+  "media_id": "18097665473069441",
+  "parent_id": "18071476187300243",
+  "child_ids": [
+    "18071475953300243",
+    "18071475986300243",
+    "18071476019300243",
+    "18071476034300243",
+    "18071476055300243",
+    "18071476073300243",
+    "18071476133300243",
+    "18071476169300243"
+  ],
+  "tmpfile_urls": [
+    "http://tmpfiles.org/dl/31437021/slide_1.png",
+    "http://tmpfiles.org/dl/31437040/slide_2.png",
+    "http://tmpfiles.org/dl/31437062/slide_3.png",
+    "http://tmpfiles.org/dl/31437076/slide_4.png",
+    "http://tmpfiles.org/dl/31437092/slide_5.png",
+    "http://tmpfiles.org/dl/31437105/slide_6.png",
+    "http://tmpfiles.org/dl/31437127/slide_7.png",
+    "http://tmpfiles.org/dl/31437145/slide_8.png"
+  ]
+}

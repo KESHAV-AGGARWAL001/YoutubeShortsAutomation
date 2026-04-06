@@ -1,0 +1,275 @@
+import os
+import json
+import datetime
+from dotenv import load_dotenv
+from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+
+load_dotenv()
+
+SCOPES = ["https://www.googleapis.com/auth/youtube"]
+
+
+def get_youtube_client():
+    creds = None
+
+    if os.path.exists("output/token.json"):
+        creds = Credentials.from_authorized_user_file("output/token.json", SCOPES)
+
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            print("  Token expired — refreshing...")
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                os.getenv("YOUTUBE_CLIENT_SECRET", "credentials.json"),
+                SCOPES
+            )
+            creds = flow.run_local_server(port=0)
+        with open("output/token.json", "w") as f:
+            f.write(creds.to_json())
+
+    return build("youtube", "v3", credentials=creds)
+
+
+def get_publish_time():
+    """
+    Read publish time from PUBLISH_TIME_UTC environment variable.
+    This is set by main.py before calling this script:
+      Video 1 → 12:00 PM IST = 06:30 UTC
+      Video 2 →  6:00 PM IST = 12:30 UTC
+
+    Falls back to tomorrow 12:00 PM IST if running standalone.
+    """
+    # ── Read from environment — set by main.py ──
+    env_time = os.environ.get("PUBLISH_TIME_UTC", "").strip()
+
+    if env_time:
+        print(f"  Schedule from pipeline: {env_time}")
+        return env_time
+
+    # ── Standalone fallback — tomorrow 12:00 PM IST ──
+    tomorrow = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
+    fallback = tomorrow.replace(hour=6, minute=30, second=0, microsecond=0)
+    fallback_str = fallback.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    print(f"  Schedule fallback (standalone): {fallback_str} → 12:00 PM IST")
+    return fallback_str
+
+
+def upload_video(youtube):
+    with open("output/seo_data.json") as f:
+        seo = json.load(f)
+
+    scheduled_time = get_publish_time()
+    video_num      = os.environ.get("VIDEO_NUMBER", "1")
+
+    # Convert UTC back to IST for display
+    try:
+        utc_dt  = datetime.datetime.strptime(scheduled_time, "%Y-%m-%dT%H:%M:%S.000Z")
+        ist_dt  = utc_dt + datetime.timedelta(hours=5, minutes=30)
+        ist_str = ist_dt.strftime("%d %b %Y %I:%M %p IST")
+    except Exception:
+        ist_str = scheduled_time
+
+    body = {
+        "snippet": {
+            "title":       seo["youtube_title"],
+            "description": seo["description"],
+            "tags":        seo["tags"],
+            "categoryId":  "26"
+        },
+        "status": {
+            "privacyStatus":           "private",
+            "publishAt":               scheduled_time,
+            "selfDeclaredMadeForKids": False
+        }
+    }
+
+    media = MediaFileUpload(
+        "output/final_video.mp4",
+        mimetype="video/mp4",
+        resumable=True,
+        chunksize=1024 * 1024 * 5
+    )
+
+    print(f"  Title     : {seo['youtube_title']}")
+    print(f"  Video     : #{video_num}")
+    print(f"  Publish   : {ist_str}")
+    print(f"  UTC       : {scheduled_time}")
+    print("  Uploading...")
+
+    request  = youtube.videos().insert(
+        part="snippet,status",
+        body=body,
+        media_body=media
+    )
+
+    response = None
+    while response is None:
+        status, response = request.next_chunk()
+        if status:
+            print(f"  Progress  : {int(status.progress() * 100)}%", end="\r")
+
+    video_id = response["id"]
+    print(f"\n  Uploaded  : https://youtube.com/watch?v={video_id}")
+
+    # Thumbnail — skip gracefully if channel not verified
+    if os.path.exists("output/thumbnail.jpg"):
+        try:
+            youtube.thumbnails().set(
+                videoId=video_id,
+                media_body=MediaFileUpload(
+                    "output/thumbnail.jpg",
+                    mimetype="image/jpeg"
+                )
+            ).execute()
+            print("  Thumbnail : uploaded!")
+        except Exception:
+            print("  Thumbnail : skipped (verify channel at youtube.com/verify)")
+
+    return video_id, seo
+
+
+# ── Playlist helpers ──────────────────────────────────────────────────
+
+PLAYLIST_CACHE = "output/playlist_cache.json"
+
+
+def load_playlist_cache():
+    """Load cached playlist name → ID mapping from disk."""
+    if os.path.exists(PLAYLIST_CACHE):
+        with open(PLAYLIST_CACHE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+
+def save_playlist_cache(cache):
+    with open(PLAYLIST_CACHE, "w", encoding="utf-8") as f:
+        json.dump(cache, f, indent=2, ensure_ascii=False)
+
+
+def find_playlist_on_channel(youtube, playlist_name):
+    """
+    Search the authenticated channel's playlists for one matching
+    `playlist_name` (case-insensitive).  Returns the playlist ID or None.
+    """
+    next_page = None
+    while True:
+        resp = youtube.playlists().list(
+            part="snippet",
+            mine=True,
+            maxResults=50,
+            pageToken=next_page
+        ).execute()
+
+        for item in resp.get("items", []):
+            if item["snippet"]["title"].strip().lower() == playlist_name.strip().lower():
+                return item["id"]
+
+        next_page = resp.get("nextPageToken")
+        if not next_page:
+            break
+    return None
+
+
+def get_or_create_playlist(youtube, playlist_name):
+    """
+    Return the playlist ID for `playlist_name`.
+    1. Check the local cache first.
+    2. If not cached, search the channel.
+    3. If it doesn't exist yet, create it.
+    """
+    cache = load_playlist_cache()
+
+    # 1 — cache hit
+    if playlist_name in cache:
+        print(f"  Playlist  : {playlist_name} (cached)")
+        return cache[playlist_name]
+
+    # 2 — search the channel
+    print(f"  Searching channel for playlist \"{playlist_name}\"...")
+    playlist_id = find_playlist_on_channel(youtube, playlist_name)
+
+    if playlist_id:
+        print(f"  Playlist  : found → {playlist_id}")
+    else:
+        # 3 — create it
+        print(f"  Playlist  : not found — creating \"{playlist_name}\"...")
+        body = {
+            "snippet": {
+                "title":       playlist_name,
+                "description": f"{playlist_name} — curated by NextLevelMind."
+            },
+            "status": {
+                "privacyStatus": "public"
+            }
+        }
+        resp = youtube.playlists().insert(part="snippet,status", body=body).execute()
+        playlist_id = resp["id"]
+        print(f"  Playlist  : created → {playlist_id}")
+
+    # persist
+    cache[playlist_name] = playlist_id
+    save_playlist_cache(cache)
+    return playlist_id
+
+
+def add_video_to_playlist(youtube, playlist_id, video_id):
+    """Insert a video at the end of the given playlist."""
+    youtube.playlistItems().insert(
+        part="snippet",
+        body={
+            "snippet": {
+                "playlistId": playlist_id,
+                "resourceId": {
+                    "kind":    "youtube#video",
+                    "videoId": video_id
+                }
+            }
+        }
+    ).execute()
+    print(f"  Added to playlist!")
+
+
+# ── Main ─────────────────────────────────────────────────────────────
+
+def main():
+    print("=" * 50)
+    print("  YouTube Uploader — NextLevelMind")
+    print("=" * 50)
+
+    if not os.path.exists("output/final_video.mp4"):
+        print("\n  ERROR: output/final_video.mp4 not found!")
+        return
+
+    if not os.path.exists("output/seo_data.json"):
+        print("\n  ERROR: output/seo_data.json not found!")
+        return
+
+    size_mb = os.path.getsize("output/final_video.mp4") // (1024 * 1024)
+    print(f"\n  Video size: {size_mb} MB")
+
+    print("\n  Authenticating...")
+    youtube = get_youtube_client()
+    print("  Authenticated!")
+
+    print("\n  Uploading video...")
+    video_id, seo = upload_video(youtube)
+
+    # ── Auto-playlist (DISABLED by user request) ──
+    print("\n  Playlist step: Disabled per user preference.")
+
+    print("\n" + "=" * 50)
+    print(f"  SUCCESS!")
+    print(f"  Video ID : {video_id}")
+    if playlist_name:
+        print(f"  Playlist : {playlist_name}")
+    print(f"  Studio   : https://studio.youtube.com")
+    print("=" * 50)
+
+
+if __name__ == "__main__":
+    main()

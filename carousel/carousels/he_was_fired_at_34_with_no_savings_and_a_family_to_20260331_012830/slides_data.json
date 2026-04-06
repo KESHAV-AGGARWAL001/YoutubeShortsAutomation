@@ -1,0 +1,74 @@
+{
+  "type": "story",
+  "category": "success_mindset",
+  "palette": "dark_gold",
+  "total_slides": 8,
+  "caption": "From fired to fearless",
+  "hashtags": "#nextlevelmind #successmindset #motivation #storytime #mindset",
+  "slides": [
+    {
+      "slide_number": 1,
+      "slide_type": "cover",
+      "top_tag": "TRUE STORY",
+      "main_text": "He was fired at 34 with no savings and a family to feed.",
+      "sub_text": "What he did next changed everything. Swipe >>",
+      "bg_style": "gradient"
+    },
+    {
+      "slide_number": 2,
+      "slide_type": "story",
+      "top_tag": "THE MOMENT",
+      "main_text": "He sat in his car for 2 hours. Didn't go inside. Didn't tell his wife.",
+      "sub_text": null,
+      "bg_style": "gradient"
+    },
+    {
+      "slide_number": 3,
+      "slide_type": "story",
+      "top_tag": "THE THOUGHT",
+      "main_text": "He thought of all the times he played it safe.",
+      "sub_text": "Was it worth the risk of being average?",
+      "bg_style": "gradient"
+    },
+    {
+      "slide_number": 4,
+      "slide_type": "story",
+      "top_tag": "THE DECISION",
+      "main_text": "He decided to take a different path.",
+      "sub_text": "One that would either make him or break him.",
+      "bg_style": "gradient"
+    },
+    {
+      "slide_number": 5,
+      "slide_type": "story",
+      "top_tag": "THE STRUGGLE",
+      "main_text": "He faced rejection, failure, and self-doubt.",
+      "sub_text": "But he didn't let it define him.",
+      "bg_style": "gradient"
+    },
+    {
+      "slide_number": 6,
+      "slide_type": "story",
+      "top_tag": "THE BREAKTHROUGH",
+      "main_text": "He discovered his unique strength.",
+      "sub_text": "And used it to create something extraordinary.",
+      "bg_style": "gradient"
+    },
+    {
+      "slide_number": 7,
+      "slide_type": "story",
+      "top_tag": "THE RESULT",
+      "main_text": "He became a millionaire by 40.",
+      "sub_text": "But more importantly, he found his purpose.",
+      "bg_style": "gradient"
+    },
+    {
+      "slide_number": 8,
+      "slide_type": "cta",
+      "top_tag": "NEXTLEVELMIND",
+      "main_text": "Your setback is not your story. It's your setup.",
+      "sub_text": "Follow @nextlevelmind_km. Save this post.",
+      "bg_style": "gradient"
+    }
+  ]
+}

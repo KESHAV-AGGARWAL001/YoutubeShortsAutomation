@@ -1,0 +1,32 @@
+# Python environment
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+
+# API Credentials & Sensitive Data (DO NOT REMOVE)
+.env
+*credentials.json
+*.pickle
+token.json
+
+# Local Progress & Caches
+books/progress.json
+book_shorts_cache.json
+output/
+test_output/
+archive/
+
+# Media Assets (Optional: remove if you want to push books/music/stock)
+books/*.pdf
+music/*.mp3
+stock/
+reels/
+
+# OS Specific
+.DS_Store
+Thumbs.db

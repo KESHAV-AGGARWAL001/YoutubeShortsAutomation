@@ -1,0 +1,366 @@
+# 🎬 YouTubeBot — Full Documentation
+
+> **Automated YouTube Motivational Video Bot**
+> AI-scripted · TTS voiceover · Stock footage background · Music mixing · Auto-upload
+> Last Updated: 2026-03-21
+
+---
+
+## 📋 Table of Contents
+
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Pipeline Steps](#pipeline-steps)
+- [File Structure](#file-structure)
+- [Configuration](#configuration)
+- [Stock Footage System](#stock-footage-system)
+- [Known Issues & Fixes](#known-issues--fixes)
+- [Running the Bot](#running-the-bot)
+- [Troubleshooting](#troubleshooting)
+
+---
+
+## Overview
+
+YouTubeBot is a **fully automated pipeline** that creates and uploads 2 motivational YouTube videos per day. It uses:
+
+| Component | Technology | Cost |
+|-----------|-----------|------|
+| Script Writing | **Groq API** (Llama 3.3 70B) | Free |
+| Voiceover | **Microsoft Edge TTS** | Free |
+| Video Background | **Local stock footage** (MP4 clips) | Free |
+| Background Music | **Local MP3** file | Free |
+| Thumbnail | **Pillow** (Python) | Free |
+| Upload | **YouTube Data API v3** | Free |
+| Video Processing | **FFmpeg** | Free |
+
+### Pipeline Flow
+
+```mermaid
+graph LR
+    A[02_write_script.py] --> B[03_voiceover.py]
+    B --> C[04_get_footage.py]
+    C --> D[05_make_video.py]
+    D --> E[06_thumbnail.py]
+    E --> F[07_upload.py]
+```
+
+---
+
+## Architecture
+
+### Entry Points
+
+| File | Purpose |
+|------|---------|
+| [main.py](file:///d:/YouTubeBot/main.py) | **Production** — Runs full pipeline × 2, uploads to YouTube, schedules at optimal IST times |
+| [test_main.py](file:///d:/YouTubeBot/test_main.py) | **Testing** — Runs pipeline × 2 but skips upload, saves to [temp/](file:///d:/YouTubeBot/test_main.py#39-72) folder for review |
+
+### Production Schedule ([main.py](file:///d:/YouTubeBot/main.py))
+
+The bot creates 2 videos per day, scheduled for optimal Indian audience engagement:
+
+| Video | Publish Time (IST) | Upload Time (UTC) | Why |
+|-------|-------------------|-------------------|-----|
+| Video 1 | 12:00 PM IST | 06:30 UTC | Lunch break — people scroll during break |
+| Video 2 | 6:00 PM IST | 12:30 UTC | After work/school — highest India traffic |
+
+---
+
+## Pipeline Steps
+
+### Step 1: Script Generation — [02_write_script.py](file:///d:/YouTubeBot/scripts/02_write_script.py)
+
+- **API**: Groq (free tier) with `llama-3.3-70b-versatile`
+- **Process**:
+  1. Asks Groq for 1 trending motivational topic
+  2. Writes a 700-750 word motivational script (≈5 minutes)
+  3. Script structure: Hook → Lesson 1 → Lesson 2 → Lesson 3 → Emotional CTA
+- **Style**: Deep, cinematic — like Ben Lionel Scott or Mulligan Brothers
+- **Outputs**:
+  - `output/latest_script.txt` — full script text
+  - `output/sections/01_hook.txt` through `05_cta.txt` — individual sections for TTS
+  - `output/seo_data.json` — YouTube title, description, tags
+  - `output/video_data_<timestamp>.json` — complete data dump
+
+### Step 2: Voiceover — [03_voiceover.py](file:///d:/YouTubeBot/scripts/03_voiceover.py)
+
+- **Engine**: Microsoft Edge TTS (completely free, no API key)
+- **Voice**: `en-US-GuyNeural` — deep American male
+- **Settings**: Rate `-5%` (slower = cinematic), Pitch `-3Hz` (deeper)
+- **Process**: Converts each section `.txt` file → [.mp3](file:///d:/YouTubeBot/music/background.mp3) voiceover
+- **Outputs**: `output/voiceovers/01_hook.mp3` through `05_cta.mp3`
+
+### Step 3: Footage Selection — [04_get_footage.py](file:///d:/YouTubeBot/scripts/04_get_footage.py)
+
+- **Source**: Local stock videos in [stock/](file:///d:/YouTubeBot/scripts/06_thumbnail.py#11-51) subfolders
+- **Process**:
+  1. Scans all category folders inside [stock/](file:///d:/YouTubeBot/scripts/06_thumbnail.py#11-51)
+  2. Randomly picks **2 categories** for visual variety
+  3. Alternates clips between the 2 categories
+  4. Builds sequence until voiceover duration + 30s buffer is covered
+  5. Writes FFmpeg concat file with **absolute paths**
+- **Outputs**:
+  - `output/stock_concat.txt` — FFmpeg concat file listing all clips
+  - `output/video_theme.json` — chosen categories (used by thumbnail)
+  - `output/clip_list.json` — ordered list of clip paths
+
+### Step 4: Video Assembly — [05_make_video.py](file:///d:/YouTubeBot/scripts/05_make_video.py)
+
+> [!IMPORTANT]
+> This is the most critical step. Stock videos have **different resolutions (1080p–4K), frame rates (24–60fps), and codecs**. The normalization step handles this.
+
+- **Process** (3 sub-steps):
+  1. **Merge voiceovers** — Concatenates all section MP3s into `full_voiceover.mp3`
+  2. **Normalize + Assemble video**:
+     - Each stock clip is re-encoded to a standard format: **1920×1080, 30fps, h264, yuv420p**
+     - Clips that have no audio track get a silent audio stream injected
+     - All normalized clips are concatenated via FFmpeg concat demuxer
+     - Voiceover audio is mapped onto the video
+     - Video is trimmed to exact voiceover duration
+  3. **Mix background music** — Overlays [music/background.mp3](file:///d:/YouTubeBot/music/background.mp3) at 18% volume
+- **Outputs**:
+  - `output/video_no_music.mp4` — intermediate (deleted after music mix)
+  - `output/final_video.mp4` — final video ready for upload
+
+### Step 5: Thumbnail — [06_thumbnail.py](file:///d:/YouTubeBot/scripts/06_thumbnail.py)
+
+- **Background source priority**:
+  1. JPG/PNG images in today's chosen stock categories
+  2. Frame extracted from a stock video clip (at 3s mark)
+  3. Dark gradient (last resort fallback)
+- **Text**: Black, bold, uppercase — first 6 words of the title
+- **Overlay**: Semi-transparent white overlay for text readability
+- **Output**: `output/thumbnail.jpg` (1280×720, 95% quality)
+
+### Step 6: Upload — [07_upload.py](file:///d:/YouTubeBot/scripts/07_upload.py)
+
+- **API**: YouTube Data API v3 with OAuth2
+- **Credentials**: [credentials.json](file:///d:/YouTubeBot/credentials.json) (client secret) + [output/token.json](file:///d:/YouTubeBot/output/token.json) (cached auth)
+- **Upload settings**:
+  - Privacy: `private` (scheduled)
+  - Category: `26` (Howto & Style)
+  - Chunks: 5MB resumable upload
+- **Thumbnail**: Attempts auto-upload; skips gracefully if channel not verified
+
+---
+
+## File Structure
+
+```
+d:\YouTubeBot\
+├── .env                          # API keys (Groq, ElevenLabs)
+├── credentials.json              # YouTube OAuth client secret
+├── main.py                       # Production entry point (2 videos + upload)
+├── test_main.py                  # Test entry point (2 videos, no upload)
+├── install.bat                   # Dependency installer
+├── test_ffmpeg_text.bat          # FFmpeg text rendering test
+│
+├── scripts/
+│   ├── 02_write_script.py        # AI script generator (Groq)
+│   ├── 03_voiceover.py           # TTS voiceover (Edge TTS)
+│   ├── 04_get_footage.py         # Stock footage selector
+│   ├── 05_make_video.py          # Video assembler (FFmpeg)
+│   ├── 06_thumbnail.py           # Thumbnail generator (Pillow)
+│   └── 07_upload.py              # YouTube uploader
+│
+├── stock/                        # Stock footage library
+│   ├── fire/       (8 clips)     # Fire/flame footage
+│   ├── morning/    (17 clips)    # Sunrise/morning footage
+│   ├── oceans/     (7 clips)     # Ocean/water footage
+│   └── plants/     (12 clips)    # Nature/plants footage
+│
+├── music/
+│   └── background.mp3            # Background music track
+│
+├── output/                       # Working directory (auto-cleaned)
+│   ├── sections/                 # Script text sections
+│   ├── voiceovers/               # TTS audio files
+│   ├── clips/                    # (reserved for future use)
+│   ├── clips_normalized/         # Temp: normalized stock clips
+│   ├── latest_script.txt
+│   ├── seo_data.json
+│   ├── video_theme.json
+│   ├── stock_concat.txt
+│   ├── clip_list.json
+│   ├── full_voiceover.mp3
+│   ├── video_no_music.mp4
+│   ├── final_video.mp4
+│   └── thumbnail.jpg
+│
+├── archive/                      # Backed-up final videos
+└── temp/                         # Test mode outputs
+```
+
+---
+
+## Configuration
+
+### Environment Variables ([.env](file:///d:/YouTubeBot/.env))
+
+| Variable | Purpose | Source |
+|----------|---------|--------|
+| `GROQ_API_KEY` | AI script generation | [console.groq.com](https://console.groq.com) |
+| `YOUTUBE_CLIENT_SECRET` | Path to OAuth credentials JSON | [Google Cloud Console](https://console.cloud.google.com) |
+| `ELEVENLABS_API_KEY` | (Currently unused — reserved for premium voices) | [elevenlabs.io](https://elevenlabs.io) |
+
+### Dependencies
+
+```
+groq                              # AI script writing
+edge-tts                          # Microsoft TTS
+pillow                            # Thumbnail generation
+python-dotenv                     # .env file loading
+google-auth                       # YouTube auth
+google-auth-oauthlib              # YouTube OAuth flow
+google-api-python-client          # YouTube Data API
+```
+
+### System Requirements
+
+- **Python 3.8+**
+- **FFmpeg** (must be in PATH) — video processing
+- **FFprobe** (bundled with FFmpeg) — duration detection
+
+---
+
+## Stock Footage System
+
+### How It Works
+
+The bot uses **local stock footage** as the video background. Videos are organized in category folders under [stock/](file:///d:/YouTubeBot/scripts/06_thumbnail.py#11-51).
+
+### Adding New Categories
+
+1. Create a new folder: `stock/your_category/`
+2. Add [.mp4](file:///d:/YouTubeBot/stock/fire/11907039_3840_2160_30fps.mp4) files (any resolution, any frame rate)
+3. Files must be > 100KB (smaller files are skipped)
+4. The bot will automatically discover and use them
+
+### Current Library
+
+| Category | Clips | Size Range | Resolutions |
+|----------|-------|------------|-------------|
+| `fire/` | 8 | 5–48 MB | 1080p, 2K, 4K |
+| `morning/` | 17 | 6–174 MB | 1080p, 1440p, 4K |
+| `oceans/` | 7 | 5–66 MB | 1080p, 1440p, 4K |
+| `plants/` | 12 | 5–126 MB | 1080p, 1440p, 4K |
+
+> [!TIP]
+> Get free stock footage from [Pexels](https://www.pexels.com/videos/), [Pixabay](https://pixabay.com/videos/), or [Coverr](https://coverr.co/). Any resolution works — the bot normalizes everything to 1920×1080.
+
+### Normalization Process
+
+Since stock clips come in wildly different formats, the bot **normalizes each clip** before concatenation:
+
+```
+Original clip (any format)
+    ↓ FFmpeg re-encode
+Normalized: 1920×1080, 30fps, h264, yuv420p, AAC audio
+    ↓ FFmpeg concat demuxer
+Final concatenated video
+```
+
+> [!NOTE]
+> Clips without an audio track automatically get a silent audio stream injected so the concat demuxer doesn't crash.
+
+---
+
+## Known Issues & Fixes
+
+### ✅ Fixed: Stock Videos Not Working (2026-03-21)
+
+**Root Cause**: FFmpeg's `-f concat` demuxer requires **all input files** to have identical codec, resolution, frame rate, and pixel format. The stock clips ranged from 1080p to 4K and 24fps to 60fps — the concat demuxer either failed silently or produced corrupted/broken output.
+
+**Fix Applied** in [05_make_video.py](file:///d:/YouTubeBot/scripts/05_make_video.py):
+- Added a [normalize_clip()](file:///d:/YouTubeBot/scripts/05_make_video.py#52-109) function that re-encodes each clip to 1920×1080 @ 30fps with h264/yuv420p
+- Clips without audio get a silent audio track injected (fallback encoding)
+- Normalized clips are concatenated, then cleaned up to save disk space
+
+**Fix Applied** in [04_get_footage.py](file:///d:/YouTubeBot/scripts/04_get_footage.py):
+- [write_concat_file()](file:///d:/YouTubeBot/scripts/04_get_footage.py#115-127) now writes **absolute paths** instead of relative paths so FFmpeg resolves files correctly
+- Fixed crash when only 1 stock category is available (line 148 `chosen[1]` → `' + '.join(chosen)`)
+
+**Fix Applied** in [test_main.py](file:///d:/YouTubeBot/test_main.py):
+- Added `output/clips_normalized` and `output/norm_concat.txt` to cleanup lists
+
+### ⚠️ Known Limitation: [install.bat](file:///d:/YouTubeBot/install.bat) References Wrong Package
+
+The install script installs `google-generativeai` (Gemini SDK) but the bot actually uses [groq](file:///d:/YouTubeBot/scripts/02_write_script.py#13-26). Should install:
+```
+pip install groq edge-tts pillow python-dotenv google-auth google-auth-oauthlib google-api-python-client
+```
+
+### ⚠️ Known Limitation: Thumbnail Upload Requires Channel Verification
+
+YouTube requires channel verification to upload custom thumbnails via API. The bot handles this gracefully by skipping thumbnail upload with an informative message.
+
+---
+
+## Running the Bot
+
+### First Time Setup
+
+```bash
+# 1. Install Python dependencies
+pip install groq edge-tts pillow python-dotenv google-auth google-auth-oauthlib google-api-python-client
+
+# 2. Install FFmpeg (must be in PATH)
+# Download from https://ffmpeg.org/download.html
+
+# 3. Set up .env file with your API keys
+
+# 4. Place YouTube OAuth credentials in credentials.json
+
+# 5. Add stock footage to stock/ subfolders
+
+# 6. Add background music as music/background.mp3
+```
+
+### Test Mode (Recommended First)
+
+```bash
+python test_main.py
+```
+
+- Creates 2 test videos
+- **No upload** — saves to [temp/](file:///d:/YouTubeBot/test_main.py#39-72) folder
+- Review the MP4 files before going live
+
+### Production Mode
+
+```bash
+python main.py
+```
+
+- Creates 2 videos
+- Uploads to YouTube
+- Schedules at optimal IST times
+- Archives videos to `archive/`
+- Cleans [output/](file:///d:/YouTubeBot/scripts/02_write_script.py#90-122) folder between videos
+
+### Run Individual Steps
+
+```bash
+python scripts/02_write_script.py    # Generate script only
+python scripts/03_voiceover.py       # Generate voiceover only
+python scripts/04_get_footage.py     # Select footage only
+python scripts/05_make_video.py      # Assemble video only
+python scripts/06_thumbnail.py       # Generate thumbnail only
+python scripts/07_upload.py          # Upload only
+```
+
+---
+
+## Troubleshooting
+
+| Issue | Likely Cause | Fix |
+|-------|-------------|-----|
+| `ERROR: No clips found in stock/` | Empty stock folder | Add MP4 clips to [stock/](file:///d:/YouTubeBot/scripts/06_thumbnail.py#11-51) subfolders |
+| `stock_concat.txt not found` | Step 4 didn't run | Run [04_get_footage.py](file:///d:/YouTubeBot/scripts/04_get_footage.py) first |
+| FFmpeg error during assembly | Clips not normalizing | Check FFmpeg is in PATH: `ffmpeg -version` |
+| No voiceover files | Edge TTS failed | Check internet connection (Edge TTS needs it) |
+| Groq API error | Bad API key or rate limit | Check [.env](file:///d:/YouTubeBot/.env) GROQ_API_KEY, wait if rate-limited |
+| Upload fails | OAuth expired or invalid | Delete [output/token.json](file:///d:/YouTubeBot/output/token.json) and re-authenticate |
+| Thumbnail upload fails | Channel not verified | Visit [youtube.com/verify](https://youtube.com/verify) |
+| Video looks corrupted | Old concat bug (pre-fix) | Ensure you have the latest [05_make_video.py](file:///d:/YouTubeBot/scripts/05_make_video.py) with normalization |
