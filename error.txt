@@ -1,0 +1,143 @@
+PS D:\YouTubeBot> python test_pipeline.py
+
+=======================================================
+  NextLevelMind — FULL PIPELINE TEST
+  Runs all steps | Skips upload | Validates SEO
+=======================================================
+
+  Output folder : test_output/
+  Upload        : SKIPPED (test mode)
+  Thumbnail     : ENABLED (new dark cinematic design)
+  SRT Captions  : ENABLED (saved to test_output/)
+  Trending Tags : ENABLED (Google Trends + evergreen fallback)
+  A/B Analytics : DRY RUN (no YouTube API calls)
+
+  Cleaning output/ for next run...
+
+=======================================================
+  UNIT TEST: get_trending_tags.py
+=======================================================
+  Trending tags: loaded from cache (8 tags)
+  ✅ [discipline_habits] returned 8 tags: ['discipline over motivation', 'james clear', '75 hard challenge']...
+  Trending tags: loaded from cache (8 tags)
+  ✅ [success_mindset] returned 8 tags: ['billionaire morning routine', 'delayed gratification', 'dopamine detox']...
+  Trending tags: loaded from cache (8 tags)
+  ✅ [general] returned 8 tags: ['jocko willink', 'andrew huberman', 'success secrets 2024']...
+
+=======================================================
+  UNIT TEST: analytics_tracker.py (dry run)
+=======================================================
+
+  Pattern Detection Tests:
+  ✅ "Stop Doing This If You Want to Win #Shorts..." → [stop_doing]
+  ✅ "Nobody Told Me This Would Change Everything #..." → [nobody_told_me]
+  ❌ "The Brutal Truth About Why You're Losing #Sho..." → [the_lesson] (expected [brutal_truth])
+  ✅ "99% of People Get This Completely Wrong #Shor..." → [99_percent]
+  ✅ "I Wish Someone Had Told Me This Sooner #Short..." → [i_wish_i_knew]
+
+  Log Upload Test (fake video):
+  Analytics: TEST_VIDEO_DRY_RUN already in log
+  ✅ log_upload() created entry for TEST_VIDEO_DRY_RUN
+  ✅ get_top_patterns() returned 0 patterns (empty is OK — no real data yet)
+
+#######################################################
+  TEST VIDEO 1/2
+#######################################################
+
+=======================================================
+  STEP 1/5: Groq AI script + viral title + trending tags
+=======================================================
+==================================================
+  NextLevelMind Shorts Generator — Groq
+  Model: llama-3.3-70b-versatile
+==================================================
+
+  Video        : #1
+  [+] Reading from Atomic_habits.pdf (PDF Pages: 14 and 15)
+
+[1/3] Generating 2 shorts from book page...
+  WARNING: JSON parse failed - Invalid control character at: line 6 column 104 (char 246)
+  Retrying... (2 attempts left)
+  WARNING: JSON parse failed - Invalid control character at: line 6 column 96 (char 225)
+  Retrying... (1 attempts left)
+  WARNING: JSON parse failed - Invalid control character at: line 6 column 104 (char 233)
+Traceback (most recent call last):
+  File "D:\YouTubeBot\scripts\02_write_script.py", line 122, in parse_json_safe
+    return json.loads(text)
+           ~~~~~~~~~~^^^^^^
+  File "C:\Python314\Lib\json\__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Python314\Lib\json\decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\json\decoder.py", line 361, in raw_decode
+    obj, end = self.scan_once(s, idx)
+               ~~~~~~~~~~~~~~^^^^^^^^
+json.decoder.JSONDecodeError: Invalid control character at: line 6 column 104 (char 246)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\YouTubeBot\scripts\02_write_script.py", line 122, in parse_json_safe
+    return json.loads(text)
+           ~~~~~~~~~~^^^^^^
+  File "C:\Python314\Lib\json\__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Python314\Lib\json\decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\json\decoder.py", line 361, in raw_decode
+    obj, end = self.scan_once(s, idx)
+               ~~~~~~~~~~~~~~^^^^^^^^
+json.decoder.JSONDecodeError: Invalid control character at: line 6 column 96 (char 225)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\YouTubeBot\scripts\02_write_script.py", line 122, in parse_json_safe
+    return json.loads(text)
+           ~~~~~~~~~~^^^^^^
+  File "C:\Python314\Lib\json\__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Python314\Lib\json\decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\json\decoder.py", line 361, in raw_decode
+    obj, end = self.scan_once(s, idx)
+               ~~~~~~~~~~~~~~^^^^^^^^
+json.decoder.JSONDecodeError: Invalid control character at: line 6 column 104 (char 233)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\YouTubeBot\scripts\02_write_script.py", line 380, in <module>
+    main()
+    ~~~~^^
+  File "D:\YouTubeBot\scripts\02_write_script.py", line 315, in main
+    script_data = write_shorts_scripts(book_page_text, current_book_name)
+  File "D:\YouTubeBot\scripts\02_write_script.py", line 299, in write_shorts_scripts
+    return parse_json_safe(text, retries_left=2, prompt=prompt)
+  File "D:\YouTubeBot\scripts\02_write_script.py", line 141, in parse_json_safe
+    return parse_json_safe(new_text, retries_left - 1, prompt)
+  File "D:\YouTubeBot\scripts\02_write_script.py", line 141, in parse_json_safe
+    return parse_json_safe(new_text, retries_left - 1, prompt)
+  File "D:\YouTubeBot\scripts\02_write_script.py", line 142, in parse_json_safe
+    raise ValueError(f"Failed to parse JSON. Raw:\n{text[:500]}")
+ValueError: Failed to parse JSON. Raw:
+{
+    "shorts": [
+        {
+            "angle_type": "emotional storytelling",
+            "youtube_title": "1% Change #Shorts",
+            "description": "Success mindset secrets — The habit 92% of people skip but winners never do
+Small changes | The story of how one team dominated their sport with tiny adjustments
+
+Imagine being part of a team that was considered a joke, but then became unstoppable.
+This is the story of how small changes can add up to make a big difference.
+The team's new
+
+  ERROR in 02_write_script.py. Stopping pipeline.
+PS D:\YouTubeBot>
