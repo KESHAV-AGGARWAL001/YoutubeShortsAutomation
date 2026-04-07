@@ -42,6 +42,30 @@ FALLBACK_HASHTAGS = (
     "#personaldevelopment #consistency #hustle #stoicism #dailymotivation"
 )
 
+# ── Amazon Affiliate Links ──────────────────────────────────────────
+# Map book filenames (lowercase, without .pdf) to affiliate URLs.
+# Replace the placeholder URLs with your actual Amazon affiliate links.
+AFFILIATE_LINKS = {
+    "atomic habits":      "https://amzn.to/REPLACE_atomic_habits",
+    "cant hurt me":       "https://amzn.to/REPLACE_cant_hurt_me",
+    "48 laws of power":   "https://amzn.to/REPLACE_48_laws",
+    "think and grow rich": "https://amzn.to/REPLACE_think_grow_rich",
+    "the art of war":     "https://amzn.to/REPLACE_art_of_war",
+    "rich dad poor dad":  "https://amzn.to/REPLACE_rich_dad",
+    "the psychology of money": "https://amzn.to/REPLACE_psych_money",
+    "deep work":          "https://amzn.to/REPLACE_deep_work",
+    "mindset":            "https://amzn.to/REPLACE_mindset",
+    "the subtle art":     "https://amzn.to/REPLACE_subtle_art",
+}
+
+RECOMMENDED_BOOKS = [
+    ("Atomic Habits — James Clear", "https://amzn.to/REPLACE_atomic_habits"),
+    ("Can't Hurt Me — David Goggins", "https://amzn.to/REPLACE_cant_hurt_me"),
+    ("48 Laws of Power — Robert Greene", "https://amzn.to/REPLACE_48_laws"),
+    ("Think and Grow Rich — Napoleon Hill", "https://amzn.to/REPLACE_think_grow_rich"),
+    ("The Psychology of Money — Morgan Housel", "https://amzn.to/REPLACE_psych_money"),
+]
+
 def get_book_page():
     books_dir = "books"
     if not os.path.exists(books_dir):
@@ -265,10 +289,35 @@ def sanitize_tags(tags):
     return result
 
 
+def get_book_affiliate_link(book_name):
+    """Find the affiliate link for the current book."""
+    book_lower = os.path.splitext(book_name)[0].lower()
+    for key, url in AFFILIATE_LINKS.items():
+        if key in book_lower or book_lower in key:
+            return os.path.splitext(book_name)[0], url
+    return os.path.splitext(book_name)[0], None
+
+
+def build_affiliate_section(book_name):
+    """Build the affiliate links section for the description."""
+    book_title, book_url = get_book_affiliate_link(book_name)
+    lines = []
+
+    if book_url:
+        lines.append(f"\n\n📚 Book from this video:")
+        lines.append(f"👉 {book_title} — {book_url}")
+
+    lines.append(f"\n📚 Books that changed my life:")
+    for title, url in RECOMMENDED_BOOKS:
+        lines.append(f"👉 {title} — {url}")
+
+    return "\n".join(lines)
+
+
 def write_shorts_scripts(book_page_text, book_name):
     performance_context = _build_performance_context()
 
-    prompt = f"""You are a top-tier YouTube Shorts Growth Expert specialized in viral content for the USA market (18-35 audience).
+    prompt = f"""You are an elite YouTube Shorts viral content strategist. You understand the algorithm deeply: completion rate is EVERYTHING. A 15-second Short with 95% retention will outperform a 50-second Short with 40% retention every single time.
 
 {performance_context}INPUT BOOK PAGE TEXT (use concepts and wisdom from this — but NEVER mention the book name):
 {book_page_text}
@@ -280,121 +329,108 @@ MISSION: Transform this into 2 viral YouTube Shorts.
 ━━━━━━━━━━━━━━━━━━━━━━━━
 TITLE RULES (CRITICAL FOR ALGORITHM):
 ━━━━━━━━━━━━━━━━━━━━━━━━
-- NEVER include the book name. Nobody searches for a book they haven't read.
-- ALWAYS end the title with #Shorts (YouTube algorithm signal).
-- Keep under 60 characters (mobile display limit).
-- Create curiosity WITHOUT revealing the answer.
-- Use one of these proven viral patterns:
+- NEVER include the book name.
+- ALWAYS end the title with #Shorts.
+- Keep under 60 characters.
+- The title must feel PERSONAL — use "You" or "Your" when possible.
+- Create a SPECIFIC curiosity gap — not vague motivation.
+- NEVER use these overused titles (they are BANNED):
+  ❌ "I Wish Someone Had Told Me This Sooner"
+  ❌ "The Brutal Truth About Why You're Still Losing"
+  ❌ "The Lesson That Actually Changed My Life"
+  ❌ "What Winners Do That Nobody Ever Sees"
+  ❌ "The Mindset Shift That Changes Everything"
+  ❌ "99% of People Get This Completely Wrong"
 
-  EMOTIONAL patterns:
-  • "Nobody Told Me This Would Change Everything #Shorts"
-  • "I Wish Someone Had Told Me This Sooner #Shorts"
-  • "The Lesson That Actually Changed My Life #Shorts"
-  • "What Winners Do That Nobody Ever Sees #Shorts"
-  • "One Story That Will Rewire Your Brain #Shorts"
-  • "The Mindset Shift That Changes Everything #Shorts"
-
-  ADVICE patterns:
-  • "Stop Doing This If You Want to Actually Win #Shorts"
-  • "The Brutal Truth About Why You're Still Losing #Shorts"
-  • "99% of People Get This Completely Wrong #Shorts"
-  • "This Is Exactly Why You're Still Struggling #Shorts"
-  • "You're 1 Decision Away From Changing Everything #Shorts"
-  • "What Nobody Tells You About [topic] #Shorts"
+- INSTEAD use patterns that feel SPECIFIC and PERSONAL:
+  ✅ "You Do THIS Every Morning And It's Destroying You #Shorts"
+  ✅ "Your Brain Is Lying to You Right Now #Shorts"
+  ✅ "Delete This One Habit Or Stay Broke Forever #Shorts"
+  ✅ "3 Seconds. That's All You Get. #Shorts"
+  ✅ "You're Not Lazy. You're Doing This Wrong. #Shorts"
+  ✅ "The 5AM Lie Nobody Talks About #Shorts"
+  ✅ "Rich People Never Say This Word #Shorts"
+  ✅ "If You Do This Before Bed You'll Win #Shorts"
+  ✅ "Your Phone Is Eating Your Future #Shorts"
+  ✅ "This 10-Second Test Reveals Everything #Shorts"
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
-DESCRIPTION RULES (CRITICAL FOR SEO):
+SCRIPT RULES (MOST IMPORTANT — READ 3 TIMES):
 ━━━━━━━━━━━━━━━━━━━━━━━━
-YouTube only shows 1-2 lines before "Show more" — those lines are your SEO goldmine.
+LENGTH: 15-25 seconds of speaking content. That's 40-70 words TOTAL. NOT 120 words. NOT 100 words. MAXIMUM 70 WORDS.
+Why? Short = higher completion rate = YouTube pushes to millions.
 
-EXACT STRUCTURE (follow precisely):
-Line 1: [Primary keyword phrase] — [direct benefit or shocking fact, under 95 chars]
-Line 2: [Secondary keyword phrase] | [curiosity gap or stat that hooks them]
+STRUCTURE — Every script MUST follow this exact flow:
+1. HOOK (first sentence, 1-2 seconds): Pattern interrupt. Make them STOP.
+   - Start with "You" or a direct command — never "Did you know" or "Here's the thing"
+   - Must feel like you're calling them out personally
+   - Examples: "Stop. You did this today and didn't even realize it."
+              "You're reading this because something isn't working."
+              "Your alarm went off this morning. What you did next decided everything."
+
+2. BODY (10-18 seconds): ONE single powerful idea. Not 3 ideas. Not a list. ONE.
+   - Short punchy sentences. 5-10 words each.
+   - Every sentence must create tension or reveal
+   - Use "you" and "your" constantly — make it feel personal
+   - Phrase-by-phrase rhythm: statement. pause. reveal. pause. impact.
+
+3. LOOP ENDING (last sentence, 2-3 seconds): The ending MUST connect back to the hook.
+   This makes people rewatch. Rewatches = YouTube pushes harder.
+   - If hook is "You do THIS every morning..." → end with "...and tomorrow morning, you'll remember this."
+   - If hook is "Your brain is lying..." → end with "...and now your brain can't lie to you anymore."
+   - The viewer should feel the urge to watch again.
+
+WRITING STYLE:
+- American English. Conversational. Raw.
+- NO filler words. NO "basically", "actually", "honestly", "look"
+- NO generic motivation. Be SPECIFIC. Use numbers, scenarios, actions.
+- Write like you're texting a friend a hard truth, not giving a TED talk.
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+DESCRIPTION RULES:
+━━━━━━━━━━━━━━━━━━━━━━━━
+Line 1: [Primary keyword phrase] — [benefit or shocking fact, under 95 chars]
+Line 2: [Secondary keyword phrase] | [curiosity gap or stat]
 Line 3: (blank)
 Line 4: Hook text from the video
-Line 5-8: 3-4 sentences of value/context
-Line 9: (blank)
-Line 10: Follow for daily [topic] content that actually works.
-Line 11: 🔔 Subscribe — new short every single day
-Line 12: 👍 Like if this hit different
-Line 13: 💾 Save this — you'll need it when life gets hard
-Line 14: (blank)
-Line 15: HASHTAG BLOCK — exactly 15 hashtags, starting with #Shorts #YouTubeShorts then niche-specific
-
-EMOTIONAL description example:
-"How to build a success mindset that separates winners from everyone else
-Success mindset secrets | The habit 92% of people skip but winners never do
-
-[hook text]
-[content value]
-
-Follow for daily mindset content that hits different every time.
-🔔 Subscribe — new short every day
-👍 Like if this hit different
-💾 Save this for when you need it most
-
-#Shorts #YouTubeShorts #motivation #mindset #selfimprovement #discipline #successmindset #growthmindset #personaldevelopment #dailyhabits #mentalstrength #stoicism #motivationalvideo #consistency #inspiration"
-
-ADVICE description example:
-"The no-nonsense discipline guide that top 1% use and nobody else will tell you
-Daily discipline tips | 87% of people fail here — here is exactly how to fix it
-
-[hook text]
-[content value]
-
-Follow for brutal, honest success content that actually changes lives.
-🔔 Subscribe — daily mindset drops
-👍 Like if this woke you up
-💾 Save this — share it with someone who needs it
-
-#Shorts #YouTubeShorts #discipline #successmindset #motivation #productivity #wealthmindset #billionairehabits #hustle #noexcuses #hardtruth #selfimprovement #realadvice #mentalstrength #workethhic"
+Line 5-7: 2-3 sentences of value
+Line 8: (blank)
+Line 9: Follow for daily content that actually changes your life.
+Line 10: 🔔 Subscribe — new short every day
+Line 11: 👍 Like if this hit different
+Line 12: 💾 Save this for when you need it
+Line 13: (blank)
+Line 14: 15 hashtags starting with #Shorts #YouTubeShorts then niche-specific
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
-TAG RULES (CRITICAL — READ CAREFULLY):
+TAG RULES:
 ━━━━━━━━━━━━━━━━━━━━━━━━
-Provide EXACTLY 32 tags per short. These are YouTube keyword tags, NOT hashtags.
-STRICT FORMAT RULES — violating these will break the upload:
-- NEVER start a tag with # (no #motivation, no #shorts — just write motivation, shorts)
-- NEVER use special characters: no &, no /, no quotes, no emojis, no punctuation
+Provide EXACTLY 32 tags per short. YouTube keyword tags, NOT hashtags.
+- NEVER start a tag with # — just plain text
+- NEVER use special characters: no &, no /, no quotes, no emojis
 - ONLY use: letters, numbers, spaces, hyphens
-- Each tag: plain text only, max 2-4 words
-
-Mix these types:
-- Broad (high traffic): "motivation", "self improvement", "mindset", "success", "discipline"
-- Mid (medium traffic): "daily habits", "morning routine", "success mindset", "mental strength"
-- Long-tail (high intent): "how to be disciplined", "how to build good habits", "self improvement tips"
-- Viral names: "atomic habits", "stoicism", "david goggins", "alex hormozi", "james clear"
-- Niche: "motivational video", "self help", "personal growth", "mindset shift", "success habits"
-
-━━━━━━━━━━━━━━━━━━━━━━━━
-SCRIPT RULES:
-━━━━━━━━━━━━━━━━━━━━━━━━
-- American English, short punchy sentences, zero robotic phrasing
-- First line = hook (must make them STOP scrolling in 1 second)
-- High pacing — every sentence must earn its place
-- 45-55 seconds of speaking content (about 120-140 words)
-- End with a thought-provoking statement, not a question
+- Mix: broad ("motivation"), mid ("success mindset"), long-tail ("how to build discipline"), viral names ("david goggins")
 
 Respond in this EXACT JSON format — no extra text outside the JSON:
 {{
     "shorts": [
         {{
             "angle_type": "emotional storytelling",
-            "youtube_title": "Viral title under 60 chars ending with #Shorts",
-            "description": "Full description following the exact structure above",
-            "hook": "First punchy line that stops the scroll",
-            "script": "Full 120-140 word narration script",
-            "cta": "Subtle viral call to action",
+            "youtube_title": "SPECIFIC personal title under 60 chars ending with #Shorts",
+            "description": "Full description following structure above",
+            "hook": "First punchy line — pattern interrupt — uses YOU",
+            "script": "Full 40-70 word script. SHORT. Every word earns its place.",
+            "cta": "One short line that triggers rewatch or follow",
             "tags": ["shorts", "youtubeshorts", "... exactly 30 more unique tags"],
             "category_id": "22"
         }},
         {{
             "angle_type": "direct advice",
-            "youtube_title": "Viral title under 60 chars ending with #Shorts",
-            "description": "Full description following the exact structure above",
-            "hook": "First punchy line that stops the scroll",
-            "script": "Full 120-140 word narration script",
-            "cta": "Subtle viral call to action",
+            "youtube_title": "SPECIFIC personal title under 60 chars ending with #Shorts",
+            "description": "Full description following structure above",
+            "hook": "First punchy line — pattern interrupt — uses YOU",
+            "script": "Full 40-70 word script. SHORT. Every word earns its place.",
+            "cta": "One short line that triggers rewatch or follow",
             "tags": ["shorts", "youtubeshorts", "... exactly 30 more unique tags"],
             "category_id": "27"
         }}
@@ -415,6 +451,14 @@ def main():
     cache_file = "book_shorts_cache.json"
 
     print(f"\n  Video        : #{video_num}")
+
+    # Read current book name from progress for affiliate links
+    progress_file = os.path.join("books", "progress.json")
+    if os.path.exists(progress_file):
+        with open(progress_file, "r", encoding="utf-8") as f:
+            current_book_name = json.load(f).get("current_book", "book")
+    else:
+        current_book_name = "book"
 
     if video_num == "1":
         book_page_text, current_book_name = get_book_page()
@@ -473,6 +517,14 @@ def main():
     if "#Shorts" not in description and "#shorts" not in description:
         description = description.rstrip() + "\n\n" + FALLBACK_HASHTAGS
         print("  [!] AI omitted hashtags — fallback block appended to description")
+
+    # Append Amazon Affiliate links to description
+    try:
+        affiliate_section = build_affiliate_section(current_book_name)
+        description = description.rstrip() + "\n" + affiliate_section
+        print("  [+] Affiliate links appended to description")
+    except Exception:
+        pass
 
     # Sanitize tags before saving — strip #, special chars, enforce 500-char limit
     tags = sanitize_tags(tags)
