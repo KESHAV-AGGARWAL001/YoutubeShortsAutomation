@@ -33,9 +33,12 @@ try:
 except ImportError:
     _ANALYTICS_AVAILABLE = False
 
+import time as _time
+
 load_dotenv()
 client = genai.Client()
 MODEL = "gemini-2.5-flash"
+FALLBACK_MODEL = "gemini-2.0-flash"
 
 CORE_TAGS = [
     "motivation", "mindset", "discipline", "selfimprovement", "success",
@@ -177,13 +180,38 @@ def get_book_pages_long():
 
 
 def ask_gemini(prompt, max_tokens=16384):
-    response = client.models.generate_content(model=MODEL, contents=prompt)
-    text = response.text.strip()
-    if "```json" in text:
-        text = text.split("```json")[1].split("```")[0].strip()
-    elif "```" in text:
-        text = text.split("```")[1].split("```")[0].strip()
-    return text
+    """
+    Call Gemini with automatic retry + fallback model.
+    Retries 3 times with exponential backoff on overload/rate-limit errors.
+    Falls back to FALLBACK_MODEL if primary MODEL keeps failing.
+    """
+    for attempt in range(4):
+        model = MODEL if attempt < 3 else FALLBACK_MODEL
+        try:
+            if attempt > 0:
+                wait = min(2 ** attempt * 5, 60)
+                print(f"  Retry {attempt}/3 — waiting {wait}s... (model: {model})")
+                _time.sleep(wait)
+            response = client.models.generate_content(model=model, contents=prompt)
+            text = response.text.strip()
+            if "```json" in text:
+                text = text.split("```json")[1].split("```")[0].strip()
+            elif "```" in text:
+                text = text.split("```")[1].split("```")[0].strip()
+            if attempt == 3:
+                print(f"  Fallback model ({FALLBACK_MODEL}) succeeded!")
+            return text
+        except Exception as e:
+            err = str(e).lower()
+            if any(k in err for k in ["429", "overloaded", "resource", "quota", "rate", "unavailable", "503", "500"]):
+                if attempt < 3:
+                    print(f"  Gemini overloaded — will retry... ({e})")
+                    continue
+                else:
+                    print(f"  Fallback model also failed — {e}")
+                    raise
+            else:
+                raise
 
 
 def sanitize_json_text(text):

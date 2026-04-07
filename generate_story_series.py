@@ -23,6 +23,7 @@ import sys
 import json
 import random
 import argparse
+import time as _time
 from datetime import datetime, date, timedelta
 from dotenv import load_dotenv
 from google import genai
@@ -32,6 +33,7 @@ load_dotenv()
 # API key is read automatically from GEMINI_API_KEY environment variable
 client = genai.Client()
 MODEL  = "gemini-2.5-flash"
+FALLBACK_MODEL = "gemini-2.0-flash"
 
 SERIES_DIR  = "story_series"
 REGISTRY    = os.path.join(SERIES_DIR, "series_registry.json")
@@ -80,15 +82,33 @@ CATEGORIES = {
 # ── AI Generation ───────────────────────────────────────────────
 
 def ask_gemini(prompt, max_tokens=4096):
-    """Send prompt to Gemini and return cleaned text."""
-    response = client.models.generate_content(model=MODEL, contents=prompt)
-    text = response.text.strip()
-    # Strip markdown code fences
-    if "```json" in text:
-        text = text.split("```json")[1].split("```")[0].strip()
-    elif "```" in text:
-        text = text.split("```")[1].split("```")[0].strip()
-    return text
+    """Send prompt to Gemini with retry + fallback on overload."""
+    for attempt in range(4):
+        model = MODEL if attempt < 3 else FALLBACK_MODEL
+        try:
+            if attempt > 0:
+                wait = min(2 ** attempt * 5, 60)
+                print(f"  Retry {attempt}/3 — waiting {wait}s... (model: {model})")
+                _time.sleep(wait)
+            response = client.models.generate_content(model=model, contents=prompt)
+            text = response.text.strip()
+            if "```json" in text:
+                text = text.split("```json")[1].split("```")[0].strip()
+            elif "```" in text:
+                text = text.split("```")[1].split("```")[0].strip()
+            if attempt == 3:
+                print(f"  Fallback model ({FALLBACK_MODEL}) succeeded!")
+            return text
+        except Exception as e:
+            err = str(e).lower()
+            if any(k in err for k in ["429", "overloaded", "resource", "quota", "rate", "unavailable", "503", "500"]):
+                if attempt < 3:
+                    print(f"  Gemini overloaded — will retry... ({e})")
+                    continue
+                else:
+                    raise
+            else:
+                raise
 
 
 def parse_json_safe(text, retries=2, prompt=None):
