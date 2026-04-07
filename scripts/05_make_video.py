@@ -232,12 +232,18 @@ def build_srt_file(timings):
                 block = "\n".join(wrapped_lines[i:i+2])
                 blocks.append(block)
 
-            # Time per block
-            block_dur = sec_dur / len(blocks)
+            # Weight duration by word count per block (not equal)
+            # Blocks with more words get more screen time — prevents desync
+            word_counts = [len(b.split()) for b in blocks]
+            total_words = sum(word_counts) or 1
 
+            cursor = sec_start
             for i, block in enumerate(blocks):
-                line_start = sec_start + i * block_dur
-                line_end   = sec_start + (i + 1) * block_dur
+                weight = word_counts[i] / total_words
+                block_dur = sec_dur * weight
+                line_start = cursor
+                line_end = cursor + block_dur
+                cursor = line_end
 
                 start_ts = seconds_to_srt_time(line_start)
                 end_ts   = seconds_to_srt_time(line_end)
@@ -581,6 +587,16 @@ def main():
     # Step 2 — Recalculate subtitle timings (fixes audio-text desync)
     print("\n[2/5] Recalculating subtitle timings...")
     timings = recalculate_timings(section_files)
+
+    # Fix timing drift: scale all timings to match actual merged audio duration
+    if timings:
+        timings_total = timings[-1]["end"]
+        if timings_total > 0 and abs(timings_total - duration) > 0.1:
+            scale = duration / timings_total
+            print(f"  Drift fix: {timings_total:.2f}s → {duration:.2f}s (scale: {scale:.4f})")
+            for t in timings:
+                t["start"] = round(t["start"] * scale, 3)
+                t["end"]   = round(t["end"] * scale, 3)
 
     # Step 3 — Assemble video (clean + with subs)
     print("\n[3/5] Assembling video (clean + YouTube subtitles)...")

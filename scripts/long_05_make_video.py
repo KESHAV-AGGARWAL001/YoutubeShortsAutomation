@@ -142,6 +142,10 @@ def build_srt_file(timings):
     Build SRT subtitle file for 16:9 horizontal with PHRASE-BY-PHRASE display.
     Shows 1-2 lines at a time (not paragraphs) for visual pacing and retention.
     40 chars per line — readable on 1920x1080 without being cramped.
+
+    Duration per block is weighted by WORD COUNT so that blocks with more
+    words get proportionally more screen time — prevents text racing ahead
+    of or lagging behind the voiceover.
     """
     srt_path = os.path.abspath("output/subtitles.srt").replace("\\", "/")
     counter = 1
@@ -164,17 +168,23 @@ def build_srt_file(timings):
             if not wrapped_lines:
                 wrapped_lines = [text[:40]]
 
-            # Group into blocks of 2 lines max (phrase-by-phrase pacing)
+            # Group into blocks of 2 lines max
             blocks = []
             for i in range(0, len(wrapped_lines), 2):
                 block = "\n".join(wrapped_lines[i:i+2])
                 blocks.append(block)
 
-            block_dur = sec_dur / len(blocks)
+            # Weight duration by word count per block (not equal)
+            word_counts = [len(b.split()) for b in blocks]
+            total_words = sum(word_counts) or 1
 
+            cursor = sec_start
             for i, block in enumerate(blocks):
-                line_start = sec_start + i * block_dur
-                line_end   = sec_start + (i + 1) * block_dur
+                weight = word_counts[i] / total_words
+                block_dur = sec_dur * weight
+                line_start = cursor
+                line_end = cursor + block_dur
+                cursor = line_end
 
                 start_ts = seconds_to_srt_time(line_start)
                 end_ts   = seconds_to_srt_time(line_end)
@@ -454,9 +464,19 @@ def main():
     if not voiceover_path:
         return
 
-    # Step 2 — Recalculate subtitle timings
+    # Step 2 — Recalculate subtitle timings + fix drift
     print("\n[2/5] Recalculating subtitle timings...")
     timings = recalculate_timings(section_files)
+
+    # Fix timing drift: scale all timings to match actual merged audio duration
+    if timings:
+        timings_total = timings[-1]["end"]
+        if timings_total > 0 and abs(timings_total - duration) > 0.1:
+            scale = duration / timings_total
+            print(f"  Drift fix: {timings_total:.2f}s → {duration:.2f}s (scale: {scale:.4f})")
+            for t in timings:
+                t["start"] = round(t["start"] * scale, 3)
+                t["end"]   = round(t["end"] * scale, 3)
 
     # Step 3 — Assemble 16:9 video
     print("\n[3/5] Assembling 16:9 video with centered subtitles...")
