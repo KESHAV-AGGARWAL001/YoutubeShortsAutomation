@@ -17,6 +17,7 @@ import sys
 import os
 import json
 import time
+import shutil
 
 STEPS = [
     ("scripts/long_02_write_script.py", "Script Generation (Gemini)"),
@@ -185,6 +186,30 @@ def check_outputs():
     return all_good
 
 
+def cleanup_output():
+    """Remove all intermediate files from output/ except final_video.mp4."""
+    keep = {"final_video.mp4"}
+    output_dir = "output"
+
+    if not os.path.exists(output_dir):
+        return
+
+    for entry in os.listdir(output_dir):
+        path = os.path.join(output_dir, entry)
+        if entry in keep:
+            continue
+        try:
+            if os.path.isdir(path):
+                shutil.rmtree(path)
+            else:
+                os.remove(path)
+        except Exception as e:
+            print(f"    Could not remove {entry}: {e}")
+
+    print(f"  Kept: final_video.mp4")
+    print(f"  Removed all other intermediate files")
+
+
 def main():
     print("\n" + "=" * 60)
     print("  LONG-FORM VIDEO PIPELINE — TEST RUN")
@@ -224,10 +249,13 @@ def main():
     if all(s for _, s in results) and outputs_ok:
         print(f"\n  ALL TESTS PASSED!")
         print(f"  Your long-form video is ready at: output/final_video.mp4")
-        print(f"  Thumbnail: output/thumbnail.jpg")
         print(f"\n  To upload: python scripts/long_07_upload.py")
     else:
         print(f"\n  SOME TESTS FAILED — check errors above")
+
+    # Cleanup: remove everything in output/ except final_video.mp4
+    print(f"\n  Cleaning up intermediate files...")
+    cleanup_output()
 
     print("=" * 60)
 

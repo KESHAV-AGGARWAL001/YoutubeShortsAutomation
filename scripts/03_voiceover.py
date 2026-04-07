@@ -1,4 +1,5 @@
 import os
+import shutil
 import asyncio
 import time
 import subprocess
@@ -33,12 +34,19 @@ def main():
     print(f"  Voice: {VOICE}")
     print("=" * 50)
 
-    os.makedirs("output/voiceovers", exist_ok=True)
     sections_dir = "output/sections"
 
     if not os.path.exists(sections_dir):
         print("  Error: No sections found. Run 02_write_script.py first!")
         return
+
+    # Always clear old voiceovers to prevent audio-text mismatch
+    # (stale MP3s from a previous run would play old script while
+    #  subtitles show the new script text)
+    if os.path.exists("output/voiceovers"):
+        shutil.rmtree("output/voiceovers")
+        print("  Cleared old voiceovers (fresh generation)")
+    os.makedirs("output/voiceovers", exist_ok=True)
 
     section_files = sorted([
         f for f in os.listdir(sections_dir) if f.endswith(".txt")
@@ -50,12 +58,6 @@ def main():
     for i, filename in enumerate(section_files, 1):
         section_name = filename.replace(".txt", "")
         output_file  = f"output/voiceovers/{section_name}.mp3"
-
-        # Skip if already generated
-        if os.path.exists(output_file) and os.path.getsize(output_file) > 1000:
-            print(f"[{i}/{len(section_files)}] Skipping (already exists): {section_name}")
-            success_count += 1
-            continue
 
         print(f"[{i}/{len(section_files)}] Generating: {section_name}...")
 

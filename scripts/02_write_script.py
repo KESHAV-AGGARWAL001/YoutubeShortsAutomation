@@ -514,6 +514,10 @@ def main():
     print(f"  YT Title : {my_short['youtube_title']}")
 
     print("\n[2/3] Saving text sections...")
+    # Clear old sections to prevent stale text leaking into subtitles
+    if os.path.exists("output/sections"):
+        import shutil
+        shutil.rmtree("output/sections")
     os.makedirs("output/sections", exist_ok=True)
     with open("output/sections/01_hook.txt", "w", encoding="utf-8") as f:
         f.write(my_short["hook"])

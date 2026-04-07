@@ -511,8 +511,11 @@ def main():
     print(f"  Title    : {script_data['youtube_title']}")
     print(f"  Chapters : {len(script_data['chapters'])}")
 
-    # Save section files
+    # Save section files — clear old sections first to prevent stale text
     print("\n[2/3] Saving text sections...")
+    if os.path.exists("output/sections"):
+        import shutil
+        shutil.rmtree("output/sections")
     os.makedirs("output/sections", exist_ok=True)
 
     # Intro
