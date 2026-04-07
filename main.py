@@ -116,14 +116,22 @@ def run_pipeline(video_num, schedule_utc, schedule_label):
     os.environ["VIDEO_NUMBER"]     = str(video_num)
 
     total = len(STEPS)
+    upload_success = True
     for i, (script, label) in enumerate(STEPS, 1):
         # Upload step is optional — don't crash pipeline if it fails
         optional = script in ("07_upload.py",)
-        run_step(script, label, i, total, optional=optional)
+        result = run_step(script, label, i, total, optional=optional)
+        if script == "07_upload.py" and not result:
+            upload_success = False
 
     print(f"\n  VIDEO {video_num} COMPLETE!")
     print(f"  YouTube: {schedule_label}")
-    cleanup_output()
+
+    if upload_success:
+        cleanup_output()
+    else:
+        print("\n  Upload failed — keeping output/ intact for manual retry")
+        print("  To retry: python scripts/07_upload.py")
 
 
 def main():

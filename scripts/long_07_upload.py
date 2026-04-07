@@ -12,6 +12,7 @@ import os
 import sys
 import re
 import json
+import subprocess
 import datetime
 from dotenv import load_dotenv
 from google.oauth2.credentials import Credentials
@@ -102,30 +103,53 @@ def sanitize_tags(tags):
     return result
 
 
+def get_audio_duration(filepath):
+    """Get duration of an audio file in seconds using ffprobe."""
+    try:
+        result = subprocess.run([
+            "ffprobe", "-v", "error",
+            "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            filepath
+        ], capture_output=True, text=True, timeout=15)
+        return float(result.stdout.strip())
+    except Exception:
+        return 60.0
+
+
 def build_chapter_timestamps(seo):
     """
     Build YouTube chapter timestamps from voiceover section durations.
-    YouTube requires the first timestamp to be 0:00 and at least 3 chapters.
+
+    YouTube chapter requirements:
+    - First timestamp MUST be 0:00
+    - At least 3 chapters
+    - Each chapter must be at least 10 seconds
+    - Timestamps must be in ascending order
     """
     chapter_titles = seo.get("chapter_titles", [])
     if not chapter_titles or len(chapter_titles) < 3:
+        print("  Timestamps: Not enough chapters (need 3+)")
         return ""
 
     voiceover_dir = "output/voiceovers"
     if not os.path.exists(voiceover_dir):
+        print("  Timestamps: No voiceover directory found")
         return ""
 
     section_files = sorted([
         f for f in os.listdir(voiceover_dir) if f.endswith(".mp3")
     ])
 
-    if len(section_files) < len(chapter_titles):
+    if not section_files:
+        print("  Timestamps: No voiceover files found")
         return ""
 
     # Calculate cumulative timestamps from voiceover durations
     timestamps = []
     cursor = 0.0
 
+    # YouTube requires first timestamp to be exactly 0:00
     for i, mp3_file in enumerate(section_files):
         if i >= len(chapter_titles):
             break
@@ -134,21 +158,20 @@ def build_chapter_timestamps(seo):
         secs = int(cursor % 60)
         timestamps.append(f"{mins}:{secs:02d} {chapter_titles[i]}")
 
-        # Get duration of this section for next timestamp
-        try:
-            import subprocess
-            result = subprocess.run([
-                "ffprobe", "-v", "error",
-                "-show_entries", "format=duration",
-                "-of", "default=noprint_wrappers=1:nokey=1",
-                os.path.join(voiceover_dir, mp3_file)
-            ], capture_output=True, text=True, timeout=15)
-            cursor += float(result.stdout.strip())
-        except Exception:
-            cursor += 60.0
+        dur = get_audio_duration(os.path.join(voiceover_dir, mp3_file))
+        cursor += dur
 
-    if not timestamps:
+    if len(timestamps) < 3:
+        print(f"  Timestamps: Only {len(timestamps)} chapters — need at least 3")
         return ""
+
+    # Validate first timestamp starts at 0:00
+    if not timestamps[0].startswith("0:00"):
+        timestamps[0] = "0:00 " + timestamps[0].split(" ", 1)[1]
+
+    print(f"  Timestamps: {len(timestamps)} chapters generated")
+    for ts in timestamps:
+        print(f"    {ts}")
 
     return "\n".join(timestamps)
 
@@ -171,6 +194,11 @@ def upload_video(youtube):
             description = parts[0] + "\n\n" + timestamps + "\n\n" + "\n\n".join(parts[1:])
         else:
             description = description + "\n\n" + timestamps
+
+    # YouTube description limit is 5000 characters — truncate if needed
+    if len(description) > 4900:
+        description = description[:4900] + "\n..."
+        print(f"  WARNING: Description truncated to 4900 chars (YouTube limit: 5000)")
 
     # Save updated description back
     seo["description"] = description

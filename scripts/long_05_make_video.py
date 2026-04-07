@@ -139,8 +139,9 @@ def clean_text_for_srt(text):
 
 def build_srt_file(timings):
     """
-    Build SRT subtitle file with WIDER text wrapping for 16:9 horizontal.
-    50 chars per line (vs 28 for Shorts), 4 lines per block.
+    Build SRT subtitle file for 16:9 horizontal with PHRASE-BY-PHRASE display.
+    Shows 1-2 lines at a time (not paragraphs) for visual pacing and retention.
+    40 chars per line — readable on 1920x1080 without being cramped.
     """
     srt_path = os.path.abspath("output/subtitles.srt").replace("\\", "/")
     counter = 1
@@ -157,16 +158,16 @@ def build_srt_file(timings):
 
             text = clean_text_for_srt(text)
 
-            # Wider wrapping for 16:9 horizontal format
-            wrapped_lines = textwrap.wrap(text, width=50)
+            # Phrase-by-phrase: 40 chars wide, 2 lines per block
+            wrapped_lines = textwrap.wrap(text, width=40)
 
             if not wrapped_lines:
-                wrapped_lines = [text[:50]]
+                wrapped_lines = [text[:40]]
 
-            # Group into blocks of up to 4 lines
+            # Group into blocks of 2 lines max (phrase-by-phrase pacing)
             blocks = []
-            for i in range(0, len(wrapped_lines), 4):
-                block = "\n".join(wrapped_lines[i:i+4])
+            for i in range(0, len(wrapped_lines), 2):
+                block = "\n".join(wrapped_lines[i:i+2])
                 blocks.append(block)
 
             block_dur = sec_dur / len(blocks)
@@ -238,12 +239,12 @@ def assemble_video(voiceover_path, voiceover_duration, timings=None):
         srt_escaped = srt_path.replace("\\", "/").replace(":", "\\:")
         style = (
             "FontName=Arial,"
-            "FontSize=20,"
+            "FontSize=28,"
             "PrimaryColour=&H00FFFFFF,"
             "OutlineColour=&H00000000,"
             "BackColour=&H80000000,"
-            "Outline=2,"
-            "Shadow=1,"
+            "Outline=3,"
+            "Shadow=2,"
             "MarginV=0,"
             "Alignment=5,"   # Center of screen (middle-center)
             "Bold=1"
@@ -420,9 +421,9 @@ def mix_background_music():
     music_file = "music/background.mp3"
 
     if not os.path.exists(music_file):
-        print("  No background music found — using voice only")
-
-    print("  Mixing music into video...")
+        print("  No background music found — copying voice-only version...")
+    else:
+        print("  Mixing music into video...")
     mix_music_into("output/video_no_music.mp4", "output/final_video.mp4")
 
     if os.path.exists("output/final_video.mp4"):

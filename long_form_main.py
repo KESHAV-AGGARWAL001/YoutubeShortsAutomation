@@ -127,13 +127,28 @@ def main():
     os.environ["PUBLISH_TIME_UTC"] = schedule_utc
 
     total = len(STEPS)
+    upload_success = True
     for i, (script, label) in enumerate(STEPS, 1):
-        optional = script in ("long_07_upload.py",)
-        run_step(script, label, i, total, optional=optional)
+        optional = script in ("long_07_upload.py", "long_06_thumbnail.py")
+        result = run_step(script, label, i, total, optional=optional)
+        if script == "long_07_upload.py" and not result:
+            upload_success = False
 
     print(f"\n  LONG-FORM VIDEO COMPLETE!")
     print(f"  YouTube: {schedule_label}")
-    cleanup_output()
+
+    if upload_success:
+        cleanup_output()
+    else:
+        # Don't delete artifacts — user may want to retry upload manually
+        print("\n  Upload failed — keeping output/ intact for manual retry")
+        if os.path.exists("output/final_video.mp4"):
+            archive_dir = "archive"
+            os.makedirs(archive_dir, exist_ok=True)
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            shutil.copy2("output/final_video.mp4", f"{archive_dir}/long_video_{timestamp}.mp4")
+            print(f"  Video backed up: archive/long_video_{timestamp}.mp4")
+        print("  To retry: python scripts/long_07_upload.py")
 
     print("\n" + "=" * 50)
     print("  ALL DONE!")

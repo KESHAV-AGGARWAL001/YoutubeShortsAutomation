@@ -9,6 +9,7 @@ Same dark cinematic style as 06_thumbnail.py but for long-form videos:
 
 import os
 import json
+import random
 from PIL import Image, ImageDraw, ImageFont
 
 THUMB_W, THUMB_H = 1280, 720
@@ -154,27 +155,53 @@ def add_channel_watermark(draw, font_small):
     )
 
 
+# Subtitle taglines — adds urgency/curiosity below the main title
+THUMB_TAGLINES = [
+    "WATCH THIS BEFORE IT'S TOO LATE",
+    "THIS CHANGES EVERYTHING",
+    "YOU NEED TO HEAR THIS",
+    "MOST PEOPLE WILL IGNORE THIS",
+    "THE TRUTH NO ONE WILL TELL YOU",
+    "THIS VIDEO WILL CHANGE YOUR LIFE",
+    "STOP EVERYTHING AND WATCH THIS",
+    "DON'T SKIP THIS",
+]
+
+
+def add_subtitle_tagline(draw, y_pos, font):
+    """Add a small urgency tagline below the title for extra CTR."""
+    tagline = random.choice(THUMB_TAGLINES)
+    draw_text_with_border(
+        draw, (THUMB_W // 2, y_pos),
+        tagline, font, (255, 80, 80),
+        border_color=BLACK, border_width=3, anchor="mm"
+    )
+
+
 def generate_thumbnail(title):
     img  = create_dark_gradient()
     draw = ImageDraw.Draw(img)
 
     add_subtle_grid(draw)
 
-    font_large  = load_font(110)
-    font_accent = load_font(116)
-    font_small  = load_font(32)
+    font_large   = load_font(110)
+    font_accent  = load_font(116)
+    font_small   = load_font(32)
+    font_tagline = load_font(36)
 
     line1, line2 = split_title_for_thumbnail(title)
 
     if line2:
-        y1 = THUMB_H // 2 - 70
-        y2 = THUMB_H // 2 + 70
+        y1 = THUMB_H // 2 - 100
+        y2 = THUMB_H // 2 + 40
         draw_title_two_color(img, draw, line1, y1, font_large, font_accent)
-        add_red_accent_bar(draw, THUMB_H // 2 - 10)
+        add_red_accent_bar(draw, THUMB_H // 2 - 30)
         draw_title_two_color(img, draw, line2, y2, font_large, font_accent)
+        add_subtitle_tagline(draw, THUMB_H // 2 + 160, font_tagline)
     else:
-        draw_title_two_color(img, draw, line1, THUMB_H // 2, font_large, font_accent)
-        add_red_accent_bar(draw, THUMB_H // 2 + 80)
+        draw_title_two_color(img, draw, line1, THUMB_H // 2 - 30, font_large, font_accent)
+        add_red_accent_bar(draw, THUMB_H // 2 + 50)
+        add_subtitle_tagline(draw, THUMB_H // 2 + 110, font_tagline)
 
     add_channel_watermark(draw, font_small)
 

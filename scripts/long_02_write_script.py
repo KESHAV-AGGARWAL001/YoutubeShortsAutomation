@@ -142,8 +142,36 @@ def get_book_pages_long():
 
     print(f"  [+] Reading from {current_book} (Pages {start_page} to {min(start_page + pages_to_read - 1, end_limit - 1)})")
 
+    # If pages were blank, advance and retry (loop instead of recursion)
+    max_retries = 20
+    while not page_text.strip() and max_retries > 0:
+        max_retries -= 1
+        print(f"  [!] Pages were blank — advancing...")
+        page_text = ""
+        start_page = progress["current_page"]
+        try:
+            with open(book_path, "rb") as f:
+                reader = PyPDF2.PdfReader(f)
+                end_limit = len(reader.pages)
+                if user_end_page != -1 and user_end_page < end_limit:
+                    end_limit = user_end_page
+                if start_page >= end_limit:
+                    print(f"  [!] Reached end of {current_book} while skipping blanks.")
+                    sys.exit(1)
+                for p in range(start_page, min(start_page + pages_to_read, end_limit)):
+                    extracted = reader.pages[p].extract_text()
+                    if extracted:
+                        page_text += extracted + "\n\n"
+                progress["current_page"] = min(start_page + pages_to_read, end_limit)
+                with open(progress_file, "w", encoding="utf-8") as f:
+                    json.dump(progress, f, indent=2)
+        except Exception as e:
+            print(f"  [!] Error: {e}")
+            sys.exit(1)
+
     if not page_text.strip():
-        return get_book_pages_long()
+        print(f"  [!] Could not find non-blank pages in {current_book}.")
+        sys.exit(1)
 
     return page_text.strip(), current_book
 
@@ -268,91 +296,169 @@ def build_affiliate_section(book_name):
 
 
 def write_long_script(book_page_text, book_name):
-    prompt = f"""You are a top-tier YouTube Content Creator specialized in long-form motivational and self-improvement content for the USA market (18-35 audience).
+    prompt = f"""You are an elite YouTube retention strategist who understands exactly how the algorithm works for long-form content. You know that YouTube measures:
+- Click-through rate (thumbnail + title → must be irresistible)
+- Average view duration (AVD) — the #1 metric. If people watch 5+ minutes of an 8-minute video, YouTube pushes it to MILLIONS.
+- Re-impressions: YouTube tests with 500-1000 impressions first. If AVD is high → 10K, 50K, 100K impressions.
+
+Your job is to write scripts that KEEP PEOPLE WATCHING. Every sentence must earn the next 5 seconds of their attention.
 
 INPUT BOOK TEXT (use concepts and wisdom from this — but NEVER mention the book name):
 {book_page_text}
 
-MISSION: Transform this into a single 7-8 minute YouTube video script.
-The video will have pure black background with centered white text (like a cinematic reading experience).
+MISSION: Create a single 7-8 minute YouTube video script that holds retention above 60% throughout.
+The video: pure black background, centered white text, phrase-by-phrase display. Like a cinematic experience.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
-STRUCTURE RULES:
-━━━━━━━━━━━━━━━━━━━━━━━━
-The script MUST have this exact structure:
-1. INTRO (15-20 seconds, ~50 words) — powerful hook that makes them stay
-2. CHAPTERS (5-7 chapters, each 50-70 seconds, ~150 words each) — deep value content
-3. OUTRO (15-20 seconds, ~50 words) — strong closing + subscribe CTA
-
-Total word count: 1100-1400 words (for 7-8 minutes at speaking pace).
-
-━━━━━━━━━━━━━━━━━━━━━━━━
-TITLE RULES:
+TITLE RULES (CLICK-THROUGH RATE):
 ━━━━━━━━━━━━━━━━━━━━━━━━
 - NEVER include the book name
-- Do NOT end with #Shorts (this is a long-form video)
+- Do NOT end with #Shorts
 - Keep under 70 characters
-- SEO-optimized — include primary keyword naturally
-- Create curiosity WITHOUT revealing the answer
-- Examples:
-  "7 Rules That Separate Winners From Everyone Else"
-  "The Mindset That Makes Ordinary People Unstoppable"
-  "Why 99% of People Stay Broke (And How to Fix It)"
-  "The Psychology Behind Every Successful Person"
+- Must feel PERSONAL — use "You" or "Your" when possible
+- Create a SPECIFIC curiosity gap — not vague motivation
+- Include a number, a specific claim, or a pattern interrupt
+
+BANNED TITLES (too generic, YouTube has seen them 1 million times):
+❌ "7 Rules That Separate Winners From Everyone Else"
+❌ "The Mindset That Makes Ordinary People Unstoppable"
+❌ "Why 99% of People Stay Broke"
+❌ "The Psychology Behind Every Successful Person"
+❌ "How to Change Your Life in 30 Days"
+❌ anything with "Secret" or "Nobody Tells You"
+
+USE THESE PATTERNS INSTEAD (specific + curiosity):
+✅ "You're Wasting 4 Hours Every Day And Don't Know It"
+✅ "The Skill That Took Me From Broke to $10K/Month"
+✅ "I Tracked My Habits for 90 Days. Here's What Happened."
+✅ "Your Morning Routine Is Destroying Your Productivity"
+✅ "5 Money Mistakes That Keep Smart People Poor"
+✅ "The 2-Minute Rule That Fixed My Entire Life"
+✅ "Why Discipline Fails (And What Actually Works)"
+✅ "I Deleted Social Media for 30 Days. Everything Changed."
+✅ "The Wealth Formula Rich People Learn at 18"
+✅ "Stop Setting Goals. Do This Instead."
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
-DESCRIPTION RULES:
+STRUCTURE — THE RETENTION ARCHITECTURE:
 ━━━━━━━━━━━━━━━━━━━━━━━━
+This structure is specifically designed to prevent viewer drop-off at every critical point.
+
+1. INTRO — THE HOOK (20-30 seconds, ~70 words)
+   YouTube analytics show most drop-off happens in the first 30 seconds. Your intro must:
+   a) PATTERN INTERRUPT (first sentence): Shock, provoke, or call out the viewer directly.
+      - "Stop everything you're doing. What I'm about to tell you could save you 10 years."
+      - "You woke up this morning and made 3 mistakes before you even left your bed."
+      - "There's a reason you feel stuck. And it's not what you think."
+   b) OPEN LOOP (second part): Promise what's coming but DON'T deliver yet.
+      - "By the end of this video, you'll understand the one pattern that separates people who break through from people who stay stuck forever."
+      - "I'm going to show you 5 things. Number 4 will change how you see your entire life."
+      - "There's one habit I'll share near the end that sounds stupid — but it's the reason people go from zero to six figures."
+   c) CREDIBILITY SIGNAL: Why should they listen?
+      - Use a stat, a research reference, or a bold specific claim.
+
+2. CHAPTERS (5-6 chapters, each 55-75 seconds, ~160 words each)
+
+   CRITICAL — EVERY CHAPTER MUST FOLLOW THIS PATTERN:
+   a) MINI-HOOK (first 1-2 sentences): Re-grab attention. Viewers drift — pull them back.
+      - "Here's where it gets interesting."
+      - "This next part might make you uncomfortable."
+      - "Now pay attention, because this is where most people give up."
+      - "Remember what I said about [callback to intro]? This is why."
+   b) CONTENT (core teaching): Deliver the value. Be SPECIFIC — use numbers, scenarios, actions.
+      - NOT "You need discipline" → YES "Wake up at the same time for 21 days. Your brain physically rewires."
+      - NOT "Read more books" → YES "Read 10 pages before you check your phone. In 30 days you've finished 2 books."
+   c) TRANSITION HOOK (last sentence): Tease the NEXT chapter to prevent drop-off.
+      - "But there's a catch — and it's in the next point."
+      - "This alone won't save you. What comes next will."
+      - "You're probably thinking this is enough. It's not. Keep watching."
+
+   CHAPTER PACING:
+   - Chapters 1-2: Build the foundation. Teach something they partly know — create familiarity.
+   - Chapter 3: PATTERN BREAK — reveal something unexpected. Challenge a common belief. This is your mid-video retention spike.
+   - Chapter 4-5: Deliver the highest value. The "golden nuggets" that make people save + share the video.
+   - Chapter 5/6 (final): The payoff of the open loop from the intro. Deliver on your promise.
+
+3. OUTRO (15-20 seconds, ~50 words)
+   - Callback to the intro hook (loop closure)
+   - ONE specific action they should take TODAY (not vague "start your journey")
+   - Subtle CTA: "If this hit you, subscribe. I drop content like this every day."
+   - End on a thought-provoking line that sticks in their head
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+SCRIPT WRITING RULES:
+━━━━━━━━━━━━━━━━━━━━━━━━
+TOTAL: 1100-1400 words (7-8 minutes at speaking pace).
+
+STYLE:
+- American English. Conversational. Like a smart friend talking to you at 2 AM.
+- Short sentences. 5-12 words each. Punchy rhythm.
+- Use "you" and "your" constantly — the viewer must feel spoken to directly.
+- SPECIFIC over generic. Always.
+  ❌ "Successful people have good habits"
+  ✅ "Jeff Bezos makes 3 decisions before 10 AM. Most people can't make 1."
+- Use contrast pairs: "Most people do X. The top 1% do Y."
+- Use numbers: "87% of people quit by week 3. Here's how to be in the 13%."
+- Use scenarios: "Picture this. It's 5 AM. Your alarm goes off..."
+
+RETENTION TRICKS (use at least 4 of these across the script):
+- Foreshadowing: "There's something I'll share in chapter 4 that most people miss."
+- Callbacks: "Remember that stat I mentioned earlier? Here's why it matters."
+- Unexpected pivot: "Everything I just said? Forget it. Here's what actually matters."
+- Direct challenge: "You're going to hear this and think it doesn't apply to you. It does."
+- Countdown tension: "We're almost at the most important part. Stay with me."
+- Social proof: "A study from [university] found..." or "The top [X] performers all do this."
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+DESCRIPTION RULES (SEO — CRITICAL FOR SEARCH DISCOVERY):
+━━━━━━━━━━━━━━━━━━━━━━━━
+YouTube search is the #1 discovery source for long-form. Your description must be keyword-rich.
+
 Line 1: [Primary keyword phrase] — [direct benefit, under 95 chars]
 Line 2: [Secondary keyword phrase] | [curiosity hook or stat]
 Line 3: (blank)
-Line 4: Hook text from the video intro
-Line 5-8: 3-4 sentences of value/context about what they'll learn
+Line 4: Hook text from the video intro (exact first sentence)
+Line 5-8: 3-4 sentences explaining what they'll learn — use searchable phrases naturally
 Line 9: (blank)
-Line 10: TIMESTAMPS (will be filled in later — just put TIMESTAMPS_PLACEHOLDER)
+Line 10: TIMESTAMPS_PLACEHOLDER
 Line 11: (blank)
-Line 12: Follow for daily mindset and success content.
-Line 13: 🔔 Subscribe — new video every day
-Line 14: 👍 Like if this changed your perspective
+Line 12: Follow for daily content that changes how you think about success.
+Line 13: 🔔 Subscribe — new video every single day
+Line 14: 👍 Like if this shifted your perspective
 Line 15: 💾 Save this — you'll want to rewatch it
 Line 16: (blank)
-Line 17: 15 hashtags starting with #motivation #mindset then niche-specific
+Line 17: 15 hashtags: #motivation #mindset #selfimprovement #discipline #success #personaldevelopment #growthmindset #habits #productivity #mentalstrength #stoicism #wealthmindset #selfhelp #lifelessons #mindsetshift
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
 TAG RULES:
 ━━━━━━━━━━━━━━━━━━━━━━━━
-Provide EXACTLY 32 tags. These are YouTube keyword tags, NOT hashtags.
+Provide EXACTLY 32 tags. YouTube keyword tags, NOT hashtags.
 - NEVER start a tag with #
-- NEVER use special characters: no &, no /, no quotes, no emojis
+- NEVER use special characters
 - ONLY use: letters, numbers, spaces, hyphens
-- Mix broad, mid-tail, long-tail, and name tags
-
-━━━━━━━━━━━━━━━━━━━━━━━━
-SCRIPT RULES:
-━━━━━━━━━━━━━━━━━━━━━━━━
-- American English, conversational but powerful
-- Each chapter should have a clear chapter title (short, 2-5 words)
-- First line of intro = hook (must make them STOP scrolling)
-- High value density — every sentence teaches something
-- Natural transitions between chapters
-- End with a thought-provoking closing statement
+- Mix:
+  - Broad: "motivation", "self improvement", "mindset", "success"
+  - Mid: "daily habits", "success mindset", "morning routine", "productivity tips"
+  - Long-tail: "how to be more disciplined", "how to build good habits", "self improvement for men"
+  - Names: "atomic habits", "david goggins", "alex hormozi", "james clear", "stoicism"
+  - Trending: "personal growth 2026", "mindset coach", "life advice", "how to be successful"
 
 Respond in this EXACT JSON format — no extra text outside the JSON:
 {{
-    "youtube_title": "SEO-optimized title under 70 chars, no #Shorts",
-    "description": "Full description following the structure above",
-    "intro": "Full intro script text (15-20 seconds, ~50 words)",
+    "youtube_title": "SPECIFIC curiosity-driven title under 70 chars, uses You/Your, no #Shorts",
+    "description": "Full description following SEO structure above",
+    "intro": "Full intro script (20-30 sec, ~70 words). MUST have: pattern interrupt + open loop + credibility signal.",
     "chapters": [
         {{
-            "chapter_title": "Short Chapter Title",
-            "script": "Full chapter script (50-70 seconds, ~150 words)"
+            "chapter_title": "Short Chapter Title (2-5 words)",
+            "script": "Full chapter (55-75 sec, ~160 words). MUST have: mini-hook + content + transition hook to next chapter."
         }},
         {{
             "chapter_title": "Short Chapter Title",
-            "script": "Full chapter script (50-70 seconds, ~150 words)"
+            "script": "Full chapter — each one follows the mini-hook → content → transition pattern"
         }}
     ],
-    "outro": "Full outro script text (15-20 seconds, ~50 words)",
+    "outro": "Full outro (15-20 sec, ~50 words). Callback to intro + specific action + subtle CTA.",
     "tags": ["motivation", "mindset", "... exactly 30 more unique tags"],
     "category_id": "27"
 }}
