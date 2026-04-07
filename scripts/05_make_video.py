@@ -308,14 +308,14 @@ def assemble_video(voiceover_path, voiceover_duration, timings=None):
         srt_escaped = srt_path.replace("\\", "/").replace(":", "\\:")
         style = (
             "FontName=Arial,"
-            "FontSize=14,"
+            "FontSize=12,"
             "PrimaryColour=&H00FFFFFF,"
             "OutlineColour=&H00000000,"
             "BackColour=&H80000000,"
             "Outline=2,"
             "Shadow=1,"
-            "MarginV=420,"
-            "Alignment=2,"
+            "MarginV=0,"
+            "Alignment=10,"
             "Bold=1"
         )
         vf_subs = f"subtitles='{srt_escaped}':force_style='{style}'"
