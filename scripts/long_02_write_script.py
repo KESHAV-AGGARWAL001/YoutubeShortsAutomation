@@ -15,6 +15,7 @@ import os
 import sys
 import re
 import json
+import random
 from datetime import datetime
 from dotenv import load_dotenv
 from google import genai
@@ -323,7 +324,53 @@ def build_affiliate_section(book_name):
     return "\n".join(lines)
 
 
+LONG_DESCRIPTION_STYLES = [
+    # Style A — SEO-rich conversational
+    """YouTube search is the #1 discovery source for long-form. Write a UNIQUE, natural description:
+- Open with a searchable keyword phrase woven into a natural sentence
+- 3-4 sentences about what they'll learn — use different keyword variations naturally
+- Include TIMESTAMPS_PLACEHOLDER on its own line (timestamps added at upload)
+- A casual, varied CTA (not always "subscribe" — be creative each time)
+- 5-8 hashtags at the end (vary them — not the same set every video)
+Write like a human creator, not a bot. Every description must feel different.""",
+
+    # Style B — Curiosity hook
+    """Write a description that makes people NEED to watch. Include:
+- Start with a provocative question or bold claim related to the video
+- 2-3 sentences building curiosity about what they'll discover
+- Include TIMESTAMPS_PLACEHOLDER on its own line
+- End with a thought-provoking line (no generic CTAs)
+- 6-7 hashtags at the end
+Keep it under 10 lines. Make every word count.""",
+
+    # Style C — Value-packed minimal
+    """Write a SHORT, punchy description (6-8 lines). Include:
+- One powerful sentence summarizing the video's core lesson
+- 2-3 bullet points of what they'll learn (use • not -)
+- Include TIMESTAMPS_PLACEHOLDER on its own line
+- One line of social proof or a bold stat
+- 5-6 hashtags at the end
+No emoji-heavy CTA blocks. Clean and professional.""",
+
+    # Style D — Story teaser
+    """Write the description as a story teaser. Include:
+- Start with a scenario or "what if" that mirrors the video's opening
+- 2-3 sentences that build tension without giving away the content
+- Include TIMESTAMPS_PLACEHOLDER on its own line
+- End with "Watch till the end" or a curiosity-driven closer
+- 6-8 hashtags at the end
+Make it feel like a movie synopsis, not a YouTube template.""",
+]
+
+
 def write_long_script(book_page_text, book_name):
+    # Randomize prompt elements to avoid template detection
+    desc_style = random.choice(LONG_DESCRIPTION_STYLES)
+    tag_count = random.randint(8, 12)
+    style_idx = LONG_DESCRIPTION_STYLES.index(desc_style)
+    style_names = ["SEO-conversational", "curiosity-hook", "value-minimal", "story-teaser"]
+    print(f"  Prompt style: {style_names[style_idx]} | Tags: {tag_count}")
+
     prompt = f"""You are an elite YouTube retention strategist who understands exactly how the algorithm works for long-form content. You know that YouTube measures:
 - Click-through rate (thumbnail + title → must be irresistible)
 - Average view duration (AVD) — the #1 metric. If people watch 5+ minutes of an 8-minute video, YouTube pushes it to MILLIONS.
@@ -454,38 +501,18 @@ RETENTION TRICKS (use at least 4 of these across the script):
 - Social proof: "A study from [university] found..." or "The top [X] performers all do this."
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
-DESCRIPTION RULES (SEO — CRITICAL FOR SEARCH DISCOVERY):
+DESCRIPTION RULES:
 ━━━━━━━━━━━━━━━━━━━━━━━━
-YouTube search is the #1 discovery source for long-form. Your description must be keyword-rich.
-
-Line 1: [Primary keyword phrase] — [direct benefit, under 95 chars]
-Line 2: [Secondary keyword phrase] | [curiosity hook or stat]
-Line 3: (blank)
-Line 4: Hook text from the video intro (exact first sentence)
-Line 5-8: 3-4 sentences explaining what they'll learn — use searchable phrases naturally
-Line 9: (blank)
-Line 10: TIMESTAMPS_PLACEHOLDER
-Line 11: (blank)
-Line 12: Follow for daily content that changes how you think about success.
-Line 13: 🔔 Subscribe — new video every single day
-Line 14: 👍 Like if this shifted your perspective
-Line 15: 💾 Save this — you'll want to rewatch it
-Line 16: (blank)
-Line 17: 15 hashtags: #motivation #mindset #selfimprovement #discipline #success #personaldevelopment #growthmindset #habits #productivity #mentalstrength #stoicism #wealthmindset #selfhelp #lifelessons #mindsetshift
+{desc_style}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
 TAG RULES:
 ━━━━━━━━━━━━━━━━━━━━━━━━
-Provide EXACTLY 32 tags. YouTube keyword tags, NOT hashtags.
+Provide {tag_count} tags. YouTube keyword tags, NOT hashtags.
 - NEVER start a tag with #
 - NEVER use special characters
 - ONLY use: letters, numbers, spaces, hyphens
-- Mix:
-  - Broad: "motivation", "self improvement", "mindset", "success"
-  - Mid: "daily habits", "success mindset", "morning routine", "productivity tips"
-  - Long-tail: "how to be more disciplined", "how to build good habits", "self improvement for men"
-  - Names: "atomic habits", "david goggins", "alex hormozi", "james clear", "stoicism"
-  - Trending: "personal growth 2026", "mindset coach", "life advice", "how to be successful"
+- Mix broad ("motivation"), mid ("success mindset"), and long-tail ("how to build discipline")
 
 Respond in this EXACT JSON format — no extra text outside the JSON:
 {{
@@ -503,7 +530,7 @@ Respond in this EXACT JSON format — no extra text outside the JSON:
         }}
     ],
     "outro": "Full outro (15-20 sec, ~50 words). Callback to intro + specific action + subtle CTA.",
-    "tags": ["motivation", "mindset", "... exactly 30 more unique tags"],
+    "tags": ["motivation", "mindset", "... {tag_count} total unique tags"],
     "category_id": "27"
 }}
 Only JSON. No extra text."""

@@ -2,6 +2,7 @@ import os
 import sys
 import re
 import json
+import random
 from datetime import datetime
 from dotenv import load_dotenv
 from google import genai
@@ -342,8 +343,49 @@ def build_affiliate_section(book_name):
     return "\n".join(lines)
 
 
+DESCRIPTION_STYLES = [
+    # Style A — Full structured (classic)
+    """Write a natural, unique description. Do NOT follow a rigid template. Include:
+- A compelling opening line that hooks the reader (different every time)
+- 2-3 sentences about what the viewer will learn or feel
+- A personal CTA (vary it — not always "subscribe" or "like")
+- 5-8 hashtags at the end (start with #Shorts, rest are niche-specific, VARY them each time)
+Do NOT use emoji-heavy CTA blocks. Write it like a real person, not a bot.""",
+
+    # Style B — Minimal (short and punchy)
+    """Write a SHORT description (3-5 lines max). No fluff. Include:
+- One powerful sentence about the video's core message
+- One line of value or a bold claim
+- 5-6 hashtags at the end (start with #Shorts)
+Do NOT add subscribe/like/save CTAs. Keep it clean and minimal.""",
+
+    # Style C — Story-driven
+    """Write the description as a mini-story or thought. Include:
+- Start with a question or a "what if" scenario
+- 2-3 lines that build curiosity about the video
+- End with a casual CTA (like "watch till the end" or "think about this tonight")
+- 6-8 hashtags at the end (start with #Shorts)
+No rigid format. Make it feel like a journal entry or a tweet thread.""",
+
+    # Style D — SEO-focused conversational
+    """Write a natural description optimized for YouTube search. Include:
+- Open with a searchable keyword phrase woven into a natural sentence
+- 2-3 sentences of value using different keyword variations
+- One line encouraging engagement (vary the CTA every time — be creative)
+- 5-7 hashtags at the end (start with #Shorts)
+Make it feel like a human wrote it, not a template.""",
+]
+
+
 def write_shorts_scripts(book_page_text, book_name):
     performance_context = _build_performance_context()
+
+    # Randomize prompt elements to avoid template detection
+    desc_style = random.choice(DESCRIPTION_STYLES)
+    tag_count = random.randint(8, 12)
+    style_idx = DESCRIPTION_STYLES.index(desc_style)
+    style_names = ["structured", "minimal", "story-driven", "SEO-conversational"]
+    print(f"  Prompt style: {style_names[style_idx]} | Tags: {tag_count}")
 
     prompt = f"""You are an elite YouTube Shorts viral content strategist. You understand the algorithm deeply: completion rate is EVERYTHING. A 15-second Short with 95% retention will outperform a 50-second Short with 40% retention every single time.
 
@@ -431,27 +473,16 @@ WRITING STYLE:
 ━━━━━━━━━━━━━━━━━━━━━━━━
 DESCRIPTION RULES:
 ━━━━━━━━━━━━━━━━━━━━━━━━
-Line 1: [Primary keyword phrase] — [benefit or shocking fact, under 95 chars]
-Line 2: [Secondary keyword phrase] | [curiosity gap or stat]
-Line 3: (blank)
-Line 4: Hook text from the video
-Line 5-7: 2-3 sentences of value
-Line 8: (blank)
-Line 9: Follow for daily content that actually changes your life.
-Line 10: 🔔 Subscribe — new short every day
-Line 11: 👍 Like if this hit different
-Line 12: 💾 Save this for when you need it
-Line 13: (blank)
-Line 14: 15 hashtags starting with #Shorts #YouTubeShorts then niche-specific
+{desc_style}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
 TAG RULES:
 ━━━━━━━━━━━━━━━━━━━━━━━━
-Provide EXACTLY 32 tags per short. YouTube keyword tags, NOT hashtags.
+Provide {tag_count} tags per short. YouTube keyword tags, NOT hashtags.
 - NEVER start a tag with # — just plain text
 - NEVER use special characters: no &, no /, no quotes, no emojis
 - ONLY use: letters, numbers, spaces, hyphens
-- Mix: broad ("motivation"), mid ("success mindset"), long-tail ("how to build discipline"), viral names ("david goggins")
+- Mix: broad ("motivation"), mid ("success mindset"), long-tail ("how to build discipline")
 
 Respond in this EXACT JSON format — no extra text outside the JSON:
 {{
@@ -463,7 +494,7 @@ Respond in this EXACT JSON format — no extra text outside the JSON:
             "hook": "First punchy line — pattern interrupt — uses YOU",
             "script": "Full 40-70 word script. SHORT. Every word earns its place.",
             "cta": "One short line that triggers rewatch or follow",
-            "tags": ["shorts", "youtubeshorts", "... exactly 30 more unique tags"],
+            "tags": ["shorts", "youtubeshorts", "... {tag_count} total unique tags"],
             "category_id": "22"
         }},
         {{
@@ -473,7 +504,7 @@ Respond in this EXACT JSON format — no extra text outside the JSON:
             "hook": "First punchy line — pattern interrupt — uses YOU",
             "script": "Full 40-70 word script. SHORT. Every word earns its place.",
             "cta": "One short line that triggers rewatch or follow",
-            "tags": ["shorts", "youtubeshorts", "... exactly 30 more unique tags"],
+            "tags": ["shorts", "youtubeshorts", "... {tag_count} total unique tags"],
             "category_id": "27"
         }}
     ]
