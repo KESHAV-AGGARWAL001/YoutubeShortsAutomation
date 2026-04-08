@@ -180,7 +180,7 @@ def add_red_accent_bar(draw, y_bar):
 
 def add_channel_watermark(draw, font_small):
     """Add channel watermark bottom-right."""
-    watermark = "@NEXTLEVELMIND"
+    watermark = "@IRONMINDSET"
     draw_text_with_border(
         draw,
         (THUMB_W - 30, THUMB_H - 30),

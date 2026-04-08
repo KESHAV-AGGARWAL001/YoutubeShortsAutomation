@@ -136,7 +136,7 @@ def run_pipeline(video_num, schedule_utc, schedule_label):
 
 def main():
     print("\n" + "="*50)
-    print("  NextLevelMind — Daily Content Bot")
+    print("  IronMindset — Daily Content Bot")
     print("  2 YouTube videos per day")
     print("="*50)
 

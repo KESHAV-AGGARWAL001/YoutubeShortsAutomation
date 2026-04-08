@@ -42,7 +42,7 @@ def main():
     W = 58
     print()
     print("╔" + "═" * W + "╗")
-    print("║" + "  🎠 NextLevelMind — Carousel Dashboard".center(W) + "║")
+    print("║" + "  🎠 IronMindset — Carousel Dashboard".center(W) + "║")
     print("╠" + "═" * W + "╣")
 
     # ── Pending Carousels ──

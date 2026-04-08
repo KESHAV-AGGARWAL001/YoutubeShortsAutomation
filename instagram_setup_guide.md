@@ -19,7 +19,7 @@
 ## Step 2 — Create a Facebook Page
 
 1. Once logged in, go to **https://www.facebook.com/pages/create**
-2. Page name: your brand name (e.g. **NextLevelMind**)
+2. Page name: your brand name (e.g. **IronMindset**)
 3. Category: **Motivational Speaker** or **Personal Blog**
 4. Click **Create Page**
 
@@ -135,7 +135,7 @@ $pages.data | ForEach-Object { Write-Host "Page:" $_.name " | ID:" $_.id }
 
 This will print something like:
 ```
-Page: NextLevelMind | ID: 123456789012345
+Page: IronMindset | ID: 123456789012345
 ```
 
 Copy the **ID** number.

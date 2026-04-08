@@ -42,7 +42,7 @@ Since you're outside the US, you need to make Google think you're in the USA dur
 
 8. Select **"Create your own Gmail address"**
 9. Pick a professional-looking email:
-   - Good: `nextlevelmindofficial@gmail.com`, `nextlevelmind2026@gmail.com`
+   - Good: `ironmindsetofficial@gmail.com`, `ironmindset2026@gmail.com`
    - Avoid: random numbers, underscores, anything spammy
 10. Click **Next**
 
@@ -94,8 +94,8 @@ These settings lock your account to the USA region:
    - Click your profile icon → **Language** → Select **English**
 3. Click your **profile icon** (top-right corner)
 4. Click **"Create a channel"**
-5. Channel name: **Next Level Mind** (or your brand name)
-6. Handle: `@NextLevelMind` (or similar — must be unique)
+5. Channel name: **IronMindset** (or your brand name)
+6. Handle: `@IronMindset` (or similar — must be unique)
 7. Click **Create Channel**
 
 > Your USA-based YouTube channel is now live. YouTube has registered this channel's origin as United States.
@@ -109,8 +109,8 @@ These settings lock your account to the USA region:
 1. Go to **YouTube Studio** → https://studio.youtube.com
 2. Click **Customization** (left sidebar) → **Basic Info**
 3. Set:
-   - **Channel name**: Next Level Mind
-   - **Handle**: @NextLevelMind
+   - **Channel name**: IronMindset
+   - **Handle**: @IronMindset
    - **Description** (written for US audience — use American English, cultural references):
      ```
      Level up your mindset every single day.

@@ -250,7 +250,7 @@ def parse_json_safe(text, retries=2, prompt=None):
 def generate_quotes_carousel(category_key, cat):
     """Generate a quotes carousel using Gemini."""
     palette = CATEGORY_PALETTES.get(category_key, "dark_gold")
-    prompt = f"""You are a viral Instagram carousel content creator for @nextlevelmind_km.
+    prompt = f"""You are a viral Instagram carousel content creator for @ironmindset.
 Create a quotes carousel for the category: {cat['name']}
 Description: {cat['description']}
 Style: {cat['title_style']}
@@ -272,7 +272,7 @@ OUTPUT (strict JSON only, no markdown, no extra text):
   "palette": "{palette}",
   "total_slides": 7,
   "caption": "Instagram caption for the post (150-200 chars, punchy)",
-  "hashtags": "#nextlevelmind #mentalstrength #motivation #mindset #quotes",
+  "hashtags": "#ironmindset #mentalstrength #motivation #mindset #quotes",
   "slides": [
     {{
       "slide_number": 1,
@@ -293,9 +293,9 @@ OUTPUT (strict JSON only, no markdown, no extra text):
     {{
       "slide_number": 7,
       "slide_type": "cta",
-      "top_tag": "NEXTLEVELMIND",
+      "top_tag": "IRONMINDSET",
       "main_text": "Save this for the day you feel like giving up.",
-      "sub_text": "Follow @nextlevelmind_km for more",
+      "sub_text": "Follow @ironmindset for more",
       "bg_style": "gradient"
     }}
   ]
@@ -308,7 +308,7 @@ Generate all slides. Only JSON output, no other text."""
 def generate_tips_carousel(category_key, cat):
     """Generate a tips carousel using Gemini."""
     palette = CATEGORY_PALETTES.get(category_key, "dark_gold")
-    prompt = f"""You are a viral Instagram carousel content creator for @nextlevelmind_km.
+    prompt = f"""You are a viral Instagram carousel content creator for @ironmindset.
 Create a tips/habits carousel for the category: {cat['name']}
 Description: {cat['description']}
 Style: {cat['title_style']}
@@ -329,7 +329,7 @@ OUTPUT (strict JSON only, no markdown, no extra text):
   "palette": "{palette}",
   "total_slides": 8,
   "caption": "Instagram caption (150-200 chars)",
-  "hashtags": "#nextlevelmind #{category_key.replace('_', '')} #motivation #mindset #selfimprovement",
+  "hashtags": "#ironmindset #{category_key.replace('_', '')} #motivation #mindset #selfimprovement",
   "slides": [
     {{
       "slide_number": 1,
@@ -350,7 +350,7 @@ OUTPUT (strict JSON only, no markdown, no extra text):
     {{
       "slide_number": 8,
       "slide_type": "cta",
-      "top_tag": "NEXTLEVELMIND",
+      "top_tag": "IRONMINDSET",
       "main_text": "Which habit will you start tomorrow?",
       "sub_text": "Comment below. Follow for daily mindset content",
       "bg_style": "gradient"
@@ -365,7 +365,7 @@ Generate all slides. Only JSON output, no other text."""
 def generate_story_carousel(category_key, cat):
     """Generate a story carousel using Gemini."""
     palette = CATEGORY_PALETTES.get(category_key, "dark_red")
-    prompt = f"""You are a viral Instagram carousel content creator for @nextlevelmind_km.
+    prompt = f"""You are a viral Instagram carousel content creator for @ironmindset.
 Create a story-based carousel for the category: {cat['name']}
 Description: {cat['description']}
 Style: {cat['title_style']}
@@ -387,7 +387,7 @@ OUTPUT (strict JSON only, no markdown, no extra text):
   "palette": "{palette}",
   "total_slides": 8,
   "caption": "Instagram caption (150-200 chars)",
-  "hashtags": "#nextlevelmind #{category_key.replace('_', '')} #motivation #storytime #mindset",
+  "hashtags": "#ironmindset #{category_key.replace('_', '')} #motivation #storytime #mindset",
   "slides": [
     {{
       "slide_number": 1,
@@ -408,9 +408,9 @@ OUTPUT (strict JSON only, no markdown, no extra text):
     {{
       "slide_number": 8,
       "slide_type": "cta",
-      "top_tag": "NEXTLEVELMIND",
+      "top_tag": "IRONMINDSET",
       "main_text": "Your setback is not your story. It's your setup.",
-      "sub_text": "Follow @nextlevelmind_km. Save this post.",
+      "sub_text": "Follow @ironmindset. Save this post.",
       "bg_style": "gradient"
     }}
   ]
@@ -618,7 +618,7 @@ def render_slide(slide_data, slide_number, total_slides, palette_name, output_pa
 
     # 8. Watermark
     font_wm = load_font(FONT_SEARCH_REGULAR, 24)
-    wm_text = "@nextlevelmind_km"
+    wm_text = "@ironmindset"
     wm_bbox = draw.textbbox((0, 0), wm_text, font=font_wm)
     wm_w = wm_bbox[2] - wm_bbox[0]
     draw.text((W - wm_w - 30, H - 48), wm_text, font=font_wm, fill=(90, 90, 90))
@@ -747,7 +747,7 @@ def main():
     args = parser.parse_args()
 
     print("\n" + "=" * 55)
-    print("  🎠 Carousel Generator — NextLevelMind")
+    print("  🎠 Carousel Generator — IronMindset")
     print(f"  Model: {MODEL}")
     print("=" * 55)
 

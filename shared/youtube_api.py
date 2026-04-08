@@ -177,7 +177,7 @@ def build_youtube_metadata(part_script, series_meta, part_num, total_parts):
         desc_lines.append("")
 
     desc_lines.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    desc_lines.append("Follow @nextlevelmind for daily mindset content that hits different.")
+    desc_lines.append("Follow @ironmindset for daily mindset content that hits different.")
     desc_lines.append("🔔 Subscribe — new short every single day")
     desc_lines.append("👍 Like if this hit different")
     desc_lines.append("💾 Save this for when you need it most")
@@ -198,7 +198,7 @@ def build_youtube_metadata(part_script, series_meta, part_num, total_parts):
         "#Shorts #YouTubeShorts #motivation #mindset #selfimprovement #discipline #success #personaldevelopment #growthmindset #inspiration"
     )
     desc_lines.append(hashtags)
-    desc_lines.append("#nextlevelmind #motivationalvideo #storytime #successhabits #mentalhealth")
+    desc_lines.append("#ironmindset #motivationalvideo #storytime #successhabits #mentalhealth")
 
     description = "\n".join(desc_lines)
 
@@ -262,7 +262,7 @@ def build_youtube_metadata(part_script, series_meta, part_num, total_parts):
     ]
 
     base_tags = [
-        "shorts", "youtubeshorts", "nextlevelmind", "motivation", "mindset",
+        "shorts", "youtubeshorts", "ironmindset", "motivation", "mindset",
         "inspiration", "selfimprovement", "personaldevelopment",
         "motivationalvideo", "selfhelp", "personalgrowth",
         f"part{part_num}of{total_parts}",
@@ -312,11 +312,11 @@ def get_or_create_playlist(service, series_meta):
                 "snippet": {
                     "title":       series_title,
                     "description": (
-                        f"A {total_parts}-part story series from @NextLevelMind\n"
+                        f"A {total_parts}-part story series from @IronMindset\n"
                         f"Category: {category}\n\n"
                         f"New parts drop daily — subscribe and hit the bell 🔔"
                     ),
-                    "tags": ["nextlevelmind", "series", "motivation", category.lower()],
+                    "tags": ["ironmindset", "series", "motivation", category.lower()],
                 },
                 "status": {"privacyStatus": "public"}
             }

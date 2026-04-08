@@ -18,7 +18,7 @@
 
 1. Go to **https://www.youtube.com**
 2. Click your profile icon (top-right) → **Create a channel**
-3. Channel name: your brand name (e.g. **Next Level Mind**)
+3. Channel name: your brand name (e.g. **IronMindset**)
 4. Click **Create Channel**
 5. Go to **YouTube Studio** → **Customization** → **Basic Info**
 6. Add your channel description, keywords, and links

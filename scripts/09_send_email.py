@@ -133,10 +133,10 @@ def build_html(reel_num, data):
     location  = data.get("location",       "Worldwide")
     alt_text  = data.get("alt_text",       "")
     hook_text = data.get("hook_text",      "WATCH TILL THE END")
-    heading   = data.get("heading",        "NEXTLEVELMIND")
+    heading   = data.get("heading",        "IRONMINDSET")
     best_time = data.get("best_time",      "7:00 AM / 7:00 PM IST")
     duration  = data.get("duration",       58)
-    title     = data.get("youtube_title",  "NextLevelMind")
+    title     = data.get("youtube_title",  "IronMindset")
 
     return f"""<!DOCTYPE html><html>
 <head><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -162,7 +162,7 @@ body{{font-family:Arial,sans-serif;background:#0a0a0a;color:#fff;margin:0;paddin
 <body><div class="w">
 
 <div class="hdr">
-  <h1>📱 Reel {reel_num} Ready — NextLevelMind</h1>
+  <h1>📱 Reel {reel_num} Ready — IronMindset</h1>
   <p>{title}</p>
   <p style="color:#f5a623;font-size:11px">Duration: {duration}s · 1080×1920 · Video attached below</p>
 </div>
@@ -236,8 +236,8 @@ body{{font-family:Arial,sans-serif;background:#0a0a0a;color:#fff;margin:0;paddin
 </div>
 
 <div class="footer">
-  NextLevelMind Content Bot · {datetime.datetime.now().strftime('%d %b %Y %I:%M %p')}<br>
-  @nextlevelmind_km · Upload card also attached as .txt
+  IronMindset Content Bot · {datetime.datetime.now().strftime('%d %b %Y %I:%M %p')}<br>
+  @ironmindset · Upload card also attached as .txt
 </div>
 
 </div></body></html>"""
@@ -252,7 +252,7 @@ def send_email(reel_num):
 
     files = get_latest_files(reel_num)
     data  = load_data(files.get("data"))
-    title = data.get("youtube_title", "NextLevelMind")
+    title = data.get("youtube_title", "IronMindset")
 
     print(f"\n  Preparing email for Reel {reel_num}...")
     print(f"  To: {RECEIVER_EMAIL}")
@@ -260,7 +260,7 @@ def send_email(reel_num):
     msg            = MIMEMultipart("mixed")
     msg["From"]    = SENDER_EMAIL
     msg["To"]      = RECEIVER_EMAIL
-    msg["Subject"] = f"📱 NextLevelMind Reel {reel_num} Ready — {title}"
+    msg["Subject"] = f"📱 IronMindset Reel {reel_num} Ready — {title}"
 
     # HTML body
     msg.attach(MIMEText(build_html(reel_num, data), "html"))
@@ -278,7 +278,7 @@ def send_email(reel_num):
                 encoders.encode_base64(part)
                 part.add_header(
                     "Content-Disposition",
-                    f"attachment; filename=NextLevelMind_Reel_{reel_num}.mp4"
+                    f"attachment; filename=IronMindset_Reel_{reel_num}.mp4"
                 )
                 msg.attach(part)
             # Clean up compressed file
@@ -294,10 +294,10 @@ def send_email(reel_num):
     if cover_path and os.path.exists(cover_path):
         print(f"  Attaching cover image")
         with open(cover_path, "rb") as f:
-            img = MIMEImage(f.read(), name=f"NextLevelMind_Cover_{reel_num}.jpg")
+            img = MIMEImage(f.read(), name=f"IronMindset_Cover_{reel_num}.jpg")
             img.add_header(
                 "Content-Disposition",
-                f"attachment; filename=NextLevelMind_Cover_{reel_num}.jpg"
+                f"attachment; filename=IronMindset_Cover_{reel_num}.jpg"
             )
             msg.attach(img)
 
@@ -311,7 +311,7 @@ def send_email(reel_num):
             encoders.encode_base64(part)
             part.add_header(
                 "Content-Disposition",
-                f"attachment; filename=NextLevelMind_UploadCard_{reel_num}.txt"
+                f"attachment; filename=IronMindset_UploadCard_{reel_num}.txt"
             )
             msg.attach(part)
 
@@ -337,7 +337,7 @@ def send_email(reel_num):
 
 def main():
     print("=" * 50)
-    print("  Email Sender — NextLevelMind Reels")
+    print("  Email Sender — IronMindset Reels")
     print("=" * 50)
 
     reel_num = os.environ.get("VIDEO_NUMBER", "1")
