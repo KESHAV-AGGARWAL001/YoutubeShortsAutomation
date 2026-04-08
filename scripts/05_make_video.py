@@ -3,13 +3,15 @@
 
 Approach:
   1. Merge all voiceover MP3 sections into one full_voiceover.mp3
-  2. Loop ONE background stock clip for the full voiceover duration
-  3. Create CLEAN video (no subtitles) → video_clean.mp4
-  4. Burn timed subtitles onto clean video → video_no_music.mp4
-  5. Burn subscribe end card onto last 10s → video_no_music.mp4
+  2. Pick a random stock video from stock/ folder, scale+crop to 9:16
+  3. Loop stock video for the full voiceover duration as background
+  4. Create CLEAN video (no subtitles) → video_clean.mp4
+  5. Burn timed subtitles onto clean video → video_no_music.mp4
   6. Mix background music into both versions:
-     - final_video.mp4     → YouTube (with subtitles + end card)
+     - final_video.mp4     → YouTube (with subtitles)
      - video_for_reel.mp4  → Instagram (no subtitles, reel burns its own)
+
+Falls back to pure black background if stock/ folder is empty.
 """
 
 import subprocess
@@ -135,26 +137,27 @@ def recalculate_timings(section_files):
     return timings
 
 
-def get_selected_clip():
+def get_stock_video():
     """
-    Read the single background clip selected by 04_get_footage.py.
-    Falls back to any clip in stock/ if the theme file is missing.
+    Pick a random background video from the stock/ folder.
+    Returns the file path, or None if no videos found.
     """
-    theme_file = "output/video_theme.json"
-    if os.path.exists(theme_file):
-        with open(theme_file) as f:
-            data = json.load(f)
-        clip = data.get("selected_clip")
-        if clip and os.path.exists(clip):
-            return clip
+    stock_dir = "stock"
+    if not os.path.exists(stock_dir):
+        return None
 
-    # Fallback: grab any stock clip
-    for root, dirs, files in os.walk("stock"):
+    videos = []
+    for root, dirs, files in os.walk(stock_dir):
         for f in files:
-            if f.lower().endswith(".mp4"):
-                return os.path.join(root, f)
+            if f.lower().endswith((".mp4", ".mov", ".avi", ".mkv", ".webm")):
+                videos.append(os.path.join(root, f))
 
-    return None
+    if not videos:
+        return None
+
+    chosen = random.choice(videos)
+    print(f"  Stock video: {chosen}")
+    return chosen
 
 
 def load_section_timings():
@@ -269,7 +272,11 @@ def assemble_video(voiceover_path, voiceover_duration, timings=None):
     a subtitle-free source to burn its own Instagram-optimized text.
     """
     # ── Background source ──────────────────────────────────────────
-    print(f"  Using pure black background as requested.")
+    stock_video = get_stock_video()
+    if stock_video:
+        print(f"  Using stock video background (9:16 crop)")
+    else:
+        print(f"  No stock videos found — falling back to black background")
 
     # ── Build SRT subtitle file ──────────────────────────────────────
     if not timings:
@@ -281,25 +288,47 @@ def assemble_video(voiceover_path, voiceover_duration, timings=None):
     else:
         print("  No section timings found — skipping subtitles")
 
-    # No video filter needed for pure black natively rendered at 1080x1920
-
     # ── STEP A: Create CLEAN video (no subtitles) ────────────────────
     # This is the source for Instagram Reels — reel burns its own subs
     print(f"  Assembling {voiceover_duration:.1f}s of clean video (no subtitles)...")
 
-    result_clean = subprocess.run([
-        "ffmpeg", "-y",
-        "-f", "lavfi", "-i", f"color=c=black:s=1080x1920:r=30:d={voiceover_duration}",
-        "-i", voiceover_path,
-        "-c:v", "libx264",
-        "-preset", "medium",
-        "-crf", "23",
-        "-map", "0:v",
-        "-map", "1:a",
-        "-c:a", "aac",
-        "-b:a", "128k",
-        "output/video_clean.mp4"
-    ], capture_output=True, text=True)
+    if stock_video:
+        # Use stock video: scale+crop to 1080x1920 (9:16), loop to fill duration
+        # crop filter centers the video and cuts to 9:16 aspect ratio
+        stock_escaped = os.path.abspath(stock_video).replace("\\", "/")
+        vf_bg = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1"
+        result_clean = subprocess.run([
+            "ffmpeg", "-y",
+            "-stream_loop", "-1",
+            "-i", stock_escaped,
+            "-i", voiceover_path,
+            "-vf", vf_bg,
+            "-t", str(voiceover_duration),
+            "-c:v", "libx264",
+            "-preset", "medium",
+            "-crf", "23",
+            "-map", "0:v",
+            "-map", "1:a",
+            "-c:a", "aac",
+            "-b:a", "128k",
+            "-shortest",
+            "output/video_clean.mp4"
+        ], capture_output=True, text=True)
+    else:
+        # Fallback: pure black background
+        result_clean = subprocess.run([
+            "ffmpeg", "-y",
+            "-f", "lavfi", "-i", f"color=c=black:s=1080x1920:r=30:d={voiceover_duration}",
+            "-i", voiceover_path,
+            "-c:v", "libx264",
+            "-preset", "medium",
+            "-crf", "23",
+            "-map", "0:v",
+            "-map", "1:a",
+            "-c:a", "aac",
+            "-b:a", "128k",
+            "output/video_clean.mp4"
+        ], capture_output=True, text=True)
 
     if not os.path.exists("output/video_clean.mp4"):
         print(f"  FFmpeg STDERR:\n{result_clean.stderr[-1500:]}")

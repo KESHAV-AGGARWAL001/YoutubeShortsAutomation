@@ -331,11 +331,27 @@ def write_long_script(book_page_text, book_name):
 
 Your job is to write scripts that KEEP PEOPLE WATCHING. Every sentence must earn the next 5 seconds of their attention.
 
-INPUT BOOK TEXT (use concepts and wisdom from this — but NEVER mention the book name):
+INPUT BOOK TEXT (use as INSPIRATION ONLY — do NOT copy, quote, or closely paraphrase):
 {book_page_text}
 
-MISSION: Create a single 7-8 minute YouTube video script that holds retention above 60% throughout.
-The video: pure black background, centered white text, phrase-by-phrase display. Like a cinematic experience.
+━━━━━━━━━━━━━━━━━━━━━━━━
+COPYRIGHT SAFETY (MANDATORY — CHANNEL SURVIVAL DEPENDS ON THIS):
+━━━━━━━━━━━━━━━━━━━━━━━━
+- NEVER copy sentences or phrases from the book. Transform every idea into YOUR OWN words.
+- NEVER mention the book name, author name, or any direct quotes.
+- Take the CORE CONCEPTS from the book and add YOUR OWN:
+  → Real-world examples and scenarios you create (e.g., "Imagine you're in a meeting and...")
+  → Personal opinions and hot takes ("Here's what nobody realizes about this...")
+  → Practical step-by-step action plans the book doesn't explicitly give
+  → Connections to modern psychology studies, real research, or current trends
+  → Contrarian angles — challenge, expand on, or combine the book's ideas with other concepts
+  → Invented analogies and metaphors that make the concept memorable
+- Each chapter should feel like an ORIGINAL LESSON inspired by a concept, NOT a book summary.
+- The viewer should NEVER be able to tell this came from a specific book.
+- At least 40% of each chapter's content should be YOUR original insight, examples, or commentary — not derived from the book text.
+
+MISSION: Create a single 7-8 minute YouTube video script with ORIGINAL INSIGHTS that holds retention above 60%.
+The video: stock video background, centered white text, phrase-by-phrase display. Like a cinematic experience.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
 TITLE RULES (CLICK-THROUGH RATE):

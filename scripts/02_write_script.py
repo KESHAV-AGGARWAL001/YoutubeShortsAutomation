@@ -347,12 +347,26 @@ def write_shorts_scripts(book_page_text, book_name):
 
     prompt = f"""You are an elite YouTube Shorts viral content strategist. You understand the algorithm deeply: completion rate is EVERYTHING. A 15-second Short with 95% retention will outperform a 50-second Short with 40% retention every single time.
 
-{performance_context}INPUT BOOK PAGE TEXT (use concepts and wisdom from this — but NEVER mention the book name):
+{performance_context}INPUT BOOK PAGE TEXT (use as INSPIRATION ONLY — do NOT copy, quote, or closely paraphrase):
 {book_page_text}
 
-MISSION: Transform this into 2 viral YouTube Shorts.
-- Short 1: EMOTIONAL / STORYTELLING angle
-- Short 2: DIRECT ADVICE / "HARD TRUTH" angle
+━━━━━━━━━━━━━━━━━━━━━━━━
+COPYRIGHT SAFETY (MANDATORY — CHANNEL SURVIVAL DEPENDS ON THIS):
+━━━━━━━━━━━━━━━━━━━━━━━━
+- NEVER copy sentences or phrases from the book. Transform every idea into YOUR OWN words.
+- NEVER mention the book name, author name, or any direct quotes.
+- Take the CORE CONCEPT from the book and add YOUR OWN:
+  → Real-world examples and scenarios (invent them — "Picture your friend who...")
+  → Personal opinions and hot takes ("Here's what nobody realizes about this...")
+  → Practical action steps the book doesn't mention
+  → Connections to modern life, psychology studies, or pop culture
+  → Contrarian angles — challenge or expand on the book's ideas
+- The final script should feel like ORIGINAL ADVICE that was INSPIRED by a concept, NOT a book summary.
+- A viewer should NEVER be able to tell this came from a specific book.
+
+MISSION: Transform this into 2 viral YouTube Shorts with ORIGINAL commentary.
+- Short 1: EMOTIONAL / STORYTELLING angle — invent a relatable scenario
+- Short 2: DIRECT ADVICE / "HARD TRUTH" angle — add your own unique take
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
 TITLE RULES (CRITICAL FOR ALGORITHM):
