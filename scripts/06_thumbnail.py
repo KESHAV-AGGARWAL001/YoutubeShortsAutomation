@@ -22,12 +22,13 @@ load_dotenv()
 try:
     from google import genai
     from google.genai.types import GenerateContentConfig, Modality
-    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+    _image_key = os.getenv("GEMINI_IMAGE_API_KEY") or os.getenv("GEMINI_API_KEY")
+    client = genai.Client(api_key=_image_key)
     GEMINI_IMAGE_AVAILABLE = True
 except Exception:
     GEMINI_IMAGE_AVAILABLE = False
 
-IMAGE_MODEL = "gemini-2.5-flash-preview-04-17"
+IMAGE_MODEL = "gemini-3.1-flash-image-preview"
 
 THUMB_W, THUMB_H = 1280, 720
 

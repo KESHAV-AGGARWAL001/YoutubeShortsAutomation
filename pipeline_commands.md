@@ -48,7 +48,8 @@ Installs: `google-genai`, `Pillow`, `python-dotenv`, `edge-tts`, `PyPDF2`, `goog
 Create a file named `.env` in `C:\YoutubeShortsAutomation\` with these values:
 
 ```
-GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_API_KEY=your_gemini_api_key_for_text
+GEMINI_IMAGE_API_KEY=your_gemini_api_key_for_images
 
 INSTAGRAM_TOKEN=your_instagram_long_lived_token
 INSTAGRAM_ID=your_instagram_business_account_id
@@ -59,13 +60,16 @@ COMMUNITY_POST_APP_PASSWORD=xxxx xxxx xxxx xxxx
 
 **Where to get each key:**
 
-| Key | Where to get it |
-|-----|----------------|
-| `GEMINI_API_KEY` | aistudio.google.com → Get API key |
-| `INSTAGRAM_TOKEN` | Follow `instagram_setup_guide.md` |
-| `INSTAGRAM_ID` | Follow `instagram_setup_guide.md` |
-| `COMMUNITY_POST_EMAIL` | Your Gmail address |
-| `COMMUNITY_POST_APP_PASSWORD` | myaccount.google.com → Security → App passwords → Generate |
+| Key | Where to get it | Used for |
+|-----|----------------|----------|
+| `GEMINI_API_KEY` | aistudio.google.com → Get API key | Script writing, SEO, captions |
+| `GEMINI_IMAGE_API_KEY` | aistudio.google.com → Get API key (separate account/project) | Thumbnail + quote card image generation |
+| `INSTAGRAM_TOKEN` | Follow `instagram_setup_guide.md` | Instagram uploads |
+| `INSTAGRAM_ID` | Follow `instagram_setup_guide.md` | Instagram uploads |
+| `COMMUNITY_POST_EMAIL` | Your Gmail address | Community post emails |
+| `COMMUNITY_POST_APP_PASSWORD` | myaccount.google.com → Security → App passwords → Generate | Community post emails |
+
+> If `GEMINI_IMAGE_API_KEY` is not set, image generation automatically falls back to `GEMINI_API_KEY`.
 
 ### Step 4 — Place required files
 

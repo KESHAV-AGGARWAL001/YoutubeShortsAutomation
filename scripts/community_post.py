@@ -46,13 +46,18 @@ load_dotenv()
 try:
     from google import genai
     from google.genai.types import GenerateContentConfig, Modality
-    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+    _text_key  = os.getenv("GEMINI_API_KEY")
+    _image_key = os.getenv("GEMINI_IMAGE_API_KEY") or _text_key
+    text_client  = genai.Client(api_key=_text_key)
+    image_client = genai.Client(api_key=_image_key)
     GEMINI_AVAILABLE = True
 except Exception:
     GEMINI_AVAILABLE = False
+    text_client  = None
+    image_client = None
 
 TEXT_MODEL  = "gemini-2.5-flash"
-IMAGE_MODEL = "gemini-2.5-flash-preview-04-17"
+IMAGE_MODEL = "gemini-3.1-flash-image-preview"
 
 POST_W, POST_H = 1280, 720   # YouTube recommends 16:9 for community post images
 
@@ -190,7 +195,7 @@ Script:
 Return ONLY the quote itself. No quotation marks, no attribution, no explanation."""
 
     try:
-        response = client.models.generate_content(
+        response = text_client.models.generate_content(
             model=TEXT_MODEL,
             contents=prompt,
         )
@@ -210,7 +215,7 @@ def generate_caption(title, quote):
     prompt = prompt_template.format(title=title, quote=quote)
 
     try:
-        response = client.models.generate_content(
+        response = text_client.models.generate_content(
             model=TEXT_MODEL,
             contents=prompt,
         )
@@ -236,7 +241,7 @@ def generate_quote_card_gemini(quote):
                 print(f"  Retry {attempt}/2 — waiting {wait}s...")
                 _time.sleep(wait)
 
-            response = client.models.generate_content(
+            response = image_client.models.generate_content(
                 model=IMAGE_MODEL,
                 contents=prompt,
                 config=GenerateContentConfig(
