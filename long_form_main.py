@@ -112,7 +112,7 @@ def get_schedule():
 
 def main():
     print("\n" + "=" * 50)
-    print("  IronMindset — Long-Form Content Bot")
+    print("  NextLevelMind — Long-Form Content Bot")
     print("  1 long video per day (7-8 minutes)")
     print("=" * 50)
 

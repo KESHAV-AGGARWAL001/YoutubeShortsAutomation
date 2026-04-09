@@ -141,7 +141,7 @@ def build_caption(part_script, series_meta, part_num, total_parts):
     """Build Instagram caption from part data."""
     caption_text = part_script.get("caption", "")
     cta          = part_script.get("cta", "")
-    hashtags     = part_script.get("hashtags", "#ironmindset")
+    hashtags     = part_script.get("hashtags", "#nextlevelmind")
     series_title = series_meta.get("series_title", "")
 
     lines = []
@@ -411,7 +411,7 @@ def main():
     args = parser.parse_args()
 
     print("\n" + "=" * 55)
-    print("  📅 Story Series Uploader — IronMindset")
+    print("  📅 Story Series Uploader — NextLevelMind")
     print(f"  Date: {date.today().isoformat()}")
     print("=" * 55)
 

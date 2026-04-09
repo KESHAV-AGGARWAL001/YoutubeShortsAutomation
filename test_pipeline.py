@@ -302,7 +302,7 @@ def run_test_video(video_num):
 
 def main():
     print("\n" + "="*55)
-    print("  IronMindset — FULL PIPELINE TEST")
+    print("  NextLevelMind — FULL PIPELINE TEST")
     print("  Runs all steps | Skips upload | Validates SEO")
     print("="*55)
     print(f"\n  Output folder : {TEMP_FOLDER}/")

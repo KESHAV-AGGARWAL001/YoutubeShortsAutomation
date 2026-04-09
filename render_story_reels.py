@@ -221,8 +221,8 @@ def render_reel(part_data, series_meta, narration_path, output_path):
         f"drawtext=text='PART {part_num} of {total_parts}'"
         f"{font_part}:fontsize=32:fontcolor=white@0.7"
         f":x=(w-text_w)/2:y=80,"
-        # BOTTOM: @ironmindset watermark — always visible
-        f"drawtext=text='@ironmindset'"
+        # BOTTOM: @nextlevelmind_km watermark — always visible
+        f"drawtext=text='@nextlevelmind_km'"
         f"{font_part}:fontsize=24:fontcolor=white@0.6"
         f":x=w-text_w-30:y=h-60"
     )
@@ -454,7 +454,7 @@ def main():
     args = parser.parse_args()
 
     print("\n" + "=" * 55)
-    print("  🎬 Story Reel Renderer — IronMindset")
+    print("  🎬 Story Reel Renderer — NextLevelMind")
     print(f"  TTS: {VOICE} | Resolution: {WIDTH}x{HEIGHT}")
     print("=" * 55)
 

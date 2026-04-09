@@ -140,7 +140,7 @@ Generates a high-CTR **1280×720 thumbnail** — visible at 180px (YouTube's sma
 - Title split into 2 lines — last word of each line in **YELLOW (#FFD700)**, rest in **bold white**
 - Hard black border on all text (readable on any background)
 - Red accent bar between the two text lines (authority signal)
-- `@IRONMINDSET` watermark bottom-right
+- `@NEXTLEVELMIND` watermark bottom-right
 
 Output: `output/thumbnail.jpg`
 
@@ -223,7 +223,7 @@ The thumbnail redesign in [scripts/06_thumbnail.py](scripts/06_thumbnail.py) pri
 | Accent word | YELLOW (#FFD700) last word per line | Eye catches yellow before anything else |
 | Text border | 4px hard black shadow | Readable on any background color |
 | Red bar | Between lines, 55% screen width | Authority signal, breaks visual monotony |
-| Watermark | `@IRONMINDSET` bottom-right, 32pt | Brand building without dominating the design |
+| Watermark | `@NEXTLEVELMIND` bottom-right, 32pt | Brand building without dominating the design |
 
 The thumbnail is automatically uploaded to YouTube after each video upload. If the channel is not verified for custom thumbnails yet, it skips gracefully.
 

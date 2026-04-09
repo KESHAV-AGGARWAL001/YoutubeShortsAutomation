@@ -346,7 +346,7 @@ def upload_srt_captions(youtube, video_id):
 
 def main():
     print("=" * 50)
-    print("  Long-Form YouTube Uploader — IronMindset")
+    print("  Long-Form YouTube Uploader — NextLevelMind")
     print("=" * 50)
 
     if not os.path.exists("output/final_video.mp4"):

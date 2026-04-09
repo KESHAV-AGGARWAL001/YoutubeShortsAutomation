@@ -217,7 +217,7 @@ def print_summary():
 
 def main():
     print("\n" + "="*50)
-    print("  IronMindset — TEST MODE")
+    print("  NextLevelMind — TEST MODE")
     print("  No YouTube upload · Full Reel + Email test")
     print("="*50)
 

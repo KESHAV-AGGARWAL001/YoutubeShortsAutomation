@@ -344,7 +344,7 @@ def burn_end_card(video_path, total_duration):
         f":x=(w-text_w)/2:y=(h/2)-130"
         f":enable='between(t,{t0},{te})'",
 
-        f"drawtext=text='IronMindset'"
+        f"drawtext=text='NextLevelMind'"
         f"{fp}:fontsize=56:fontcolor=white"
         f":bordercolor=black:borderw=2"
         f":x=(w-text_w)/2:y=(h/2)-20"

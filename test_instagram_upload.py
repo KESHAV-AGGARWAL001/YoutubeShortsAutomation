@@ -89,7 +89,7 @@ def build_caption(data):
     hashtags = data.get("hashtags", "")
     if caption and hashtags:
         return f"{caption}\n\n{hashtags}"
-    return caption or hashtags or "IronMindset 🔥"
+    return caption or hashtags or "NextLevelMind 🔥"
 
 
 def format_size(bytes_val):
@@ -585,7 +585,7 @@ def main():
     args = parser.parse_args()
 
     print("\n" + "=" * 55)
-    print("  🎬 Instagram Reel Uploader — IronMindset")
+    print("  🎬 Instagram Reel Uploader — NextLevelMind")
     print("  Direct upload via Instagram Graph API")
     print("=" * 55)
 

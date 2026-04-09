@@ -1,1 +1,1 @@
-# shared module — reusable functions for IronMindset automation
+# shared module — reusable functions for NextLevelMind automation

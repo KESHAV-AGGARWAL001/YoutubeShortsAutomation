@@ -142,7 +142,7 @@ def generate_story(category_key, num_parts):
     """Generate a multi-part story series using Gemini."""
     cat = CATEGORIES[category_key]
 
-    prompt = f"""You are a viral Instagram Reels scriptwriter for the account @ironmindset_km.
+    prompt = f"""You are a viral Instagram Reels scriptwriter for the account @nextlevelmind_km.
 Your job is to write a multi-part serialized story series optimized for maximum
 suspense, retention, and "Part 2?" comments.
 
@@ -175,7 +175,7 @@ OUTPUT FORMAT (strict JSON, no markdown, no extra text):
       "hook": "First 1-2 sentences used as the visual text overlay",
       "cliffhanger": "Last line that creates suspense — shown as end card text",
       "caption": "Instagram caption for this part (150-200 chars max)",
-      "hashtags": "#ironmindset #motivation #mentalstrength #storytime #part1",
+      "hashtags": "#nextlevelmind #motivation #mentalstrength #storytime #part1",
       "cta": "Comment 'PART 2' if you want to know what happened next 👇",
       "mood": "intense"
     }}
@@ -330,7 +330,7 @@ def main():
     args = parser.parse_args()
 
     print("\n" + "=" * 55)
-    print("  📖 Story Series Generator — IronMindset")
+    print("  📖 Story Series Generator — NextLevelMind")
     print(f"  Model: {MODEL}")
     print("=" * 55)
 

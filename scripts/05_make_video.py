@@ -424,7 +424,7 @@ def burn_end_card(video_path, total_duration):
 
     Overlay elements (staggered reveal):
       t+0.0s:  Dark overlay + big red "SUBSCRIBE" text
-      t+1.5s:  Channel name "IronMindset"
+      t+1.5s:  Channel name "NextLevelMind"
       t+3.0s:  Random motivational tagline
       t+4.5s:  "Like · Share · Turn on Notifications"
 
@@ -464,7 +464,7 @@ def burn_end_card(video_path, total_duration):
         f":enable='between(t,{t0},{te})'",
 
         # Channel name
-        f"drawtext=text='IronMindset'"
+        f"drawtext=text='NextLevelMind'"
         f"{fp}:fontsize=48:fontcolor=white"
         f":bordercolor=black:borderw=2"
         f":x=(w-text_w)/2:y=(h/2)-20"

@@ -541,7 +541,7 @@ Only JSON. No extra text."""
 
 def main():
     print("=" * 50)
-    print("  IronMindset — Long-Form Script Generator")
+    print("  NextLevelMind — Long-Form Script Generator")
     print(f"  Model: {MODEL}")
     print("=" * 50)
 

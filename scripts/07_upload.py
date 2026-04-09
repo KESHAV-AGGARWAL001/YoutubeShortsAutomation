@@ -342,7 +342,7 @@ def get_or_create_playlist(youtube, playlist_name):
         body = {
             "snippet": {
                 "title":       playlist_name,
-                "description": f"{playlist_name} — curated by IronMindset."
+                "description": f"{playlist_name} — curated by NextLevelMind."
             },
             "status": {
                 "privacyStatus": "public"
@@ -379,7 +379,7 @@ def add_video_to_playlist(youtube, playlist_id, video_id):
 
 def main():
     print("=" * 50)
-    print("  YouTube Uploader — IronMindset")
+    print("  YouTube Uploader — NextLevelMind")
     print("=" * 50)
 
     if not os.path.exists("output/final_video.mp4"):

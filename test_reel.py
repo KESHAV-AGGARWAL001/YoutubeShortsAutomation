@@ -123,7 +123,7 @@ def main():
     print(f"     1. Open the vertical .mp4 — check subtitles are readable")
     print(f"     2. Subtitles should be CENTERED (not at bottom)")
     print(f"     3. No double/overlapping text from YouTube version")
-    print(f"     4. @ironmindset watermark visible at top")
+    print(f"     4. @nextlevelmind_km watermark visible at top")
     print(f"     5. Cover image looks good")
     print(f"\n  Happy? Run: python main.py (for full production)")
     print("=" * 50)

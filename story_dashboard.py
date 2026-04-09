@@ -68,7 +68,7 @@ def main():
     W = 58
     print()
     print("╔" + "═" * W + "╗")
-    print("║" + "  📺 IronMindset — Story Series Dashboard".center(W) + "║")
+    print("║" + "  📺 NextLevelMind — Story Series Dashboard".center(W) + "║")
     print("╠" + "═" * W + "╣")
 
     # ── Active Series ──
