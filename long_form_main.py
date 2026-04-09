@@ -27,6 +27,7 @@ STEPS = [
     ("long_05_make_video.py",   "Assembling 16:9 video (FFmpeg)"),
     ("long_06_thumbnail.py",    "Generating thumbnail"),
     ("long_07_upload.py",       "Uploading to YouTube"),
+    ("community_post.py",       "Generating YouTube Community Post"),
 ]
 
 
@@ -56,6 +57,14 @@ def cleanup_output():
     if os.path.exists("output/final_video.mp4"):
         shutil.copy2("output/final_video.mp4", f"{archive_dir}/long_video_{timestamp}.mp4")
         print(f"  Video backed up: archive/long_video_{timestamp}.mp4")
+
+    if os.path.exists("output/community_post.jpg"):
+        shutil.copy2("output/community_post.jpg", f"{archive_dir}/community_post_{timestamp}.jpg")
+        print(f"  Community post image backed up: archive/community_post_{timestamp}.jpg")
+
+    if os.path.exists("output/community_post_text.txt"):
+        shutil.copy2("output/community_post_text.txt", f"{archive_dir}/community_post_{timestamp}.txt")
+        print(f"  Community post text backed up: archive/community_post_{timestamp}.txt")
 
     saved_token = None
     if os.path.exists("output/token.json"):
@@ -129,7 +138,7 @@ def main():
     total = len(STEPS)
     upload_success = True
     for i, (script, label) in enumerate(STEPS, 1):
-        optional = script in ("long_07_upload.py", "long_06_thumbnail.py")
+        optional = script in ("long_07_upload.py", "long_06_thumbnail.py", "community_post.py")
         result = run_step(script, label, i, total, optional=optional)
         if script == "long_07_upload.py" and not result:
             upload_success = False

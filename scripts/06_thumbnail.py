@@ -1,24 +1,134 @@
 """
-06_thumbnail.py — Viral YouTube Thumbnail Generator
+06_thumbnail.py — AI-Generated YouTube Thumbnail (Gemini Image Generation)
 
-Design principles (optimized for CTR):
-  - Dark cinematic background (#0D0D0D → #1A1A2E gradient)
-  - Title split into 2 lines — max 6 words each
-  - Last word of each line in YELLOW (#FFD700) — eye-catching accent
-  - Bold white text with hard black border (visible on any background)
-  - Red accent bar under main text (authority signal)
-  - Channel watermark bottom-right
-  - 1280x720px for YouTube standard thumbnail
+Uses Gemini's native image generation (Nano Banana) to create unique,
+eye-catching thumbnails for each video based on the title and topic.
+
+Falls back to programmatic dark gradient style if Gemini generation fails.
 """
 
 import os
 import json
 import random
+import base64
+import time as _time
+from io import BytesIO
+from dotenv import load_dotenv
 from PIL import Image, ImageDraw, ImageFont
 
-# ── Constants ─────────────────────────────────────────────────────────
+load_dotenv()
+
+# ── Gemini Setup ─────────────────────────────────────────────────────
+try:
+    from google import genai
+    from google.genai.types import GenerateContentConfig, Modality
+    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+    GEMINI_IMAGE_AVAILABLE = True
+except Exception:
+    GEMINI_IMAGE_AVAILABLE = False
+
+IMAGE_MODEL = "gemini-2.5-flash-preview-04-17"
 
 THUMB_W, THUMB_H = 1280, 720
+
+# ── Thumbnail prompt styles — randomly selected each run ─────────────
+THUMBNAIL_PROMPTS = [
+    # Style A — Dark cinematic
+    """Create a YouTube thumbnail image (1280x720).
+Style: Dark, cinematic, moody atmosphere with dramatic lighting.
+Color scheme: Deep blacks, dark blues, subtle golden/amber highlights.
+Include bold, large white text that says: "{title}"
+The text should be centered, easy to read with a dark shadow/outline.
+Make it look professional, high-contrast, and eye-catching.
+NO faces, NO people. Focus on abstract dark visuals with dramatic light rays or particles.""",
+
+    # Style B — Neon/futuristic
+    """Create a YouTube thumbnail image (1280x720).
+Style: Futuristic, neon-lit, cyberpunk-inspired dark background.
+Color scheme: Dark background with neon blue, purple, or red glowing accents.
+Include bold, large glowing white text that says: "{title}"
+The text should be prominent, centered, with a neon glow effect.
+Add subtle geometric shapes or light streaks in the background.
+NO faces, NO people. Abstract futuristic visuals only.""",
+
+    # Style C — Motivational dark
+    """Create a YouTube thumbnail image (1280x720).
+Style: Inspirational, powerful, dark background with a spotlight effect.
+Color scheme: Black/dark gray background with a warm golden spotlight from above.
+Include bold, large text that says: "{title}"
+Top portion of text in white, one key word highlighted in bright gold/yellow.
+Add subtle smoke or fog effects at the bottom.
+NO faces, NO people. Clean, powerful composition.""",
+
+    # Style D — Minimalist bold
+    """Create a YouTube thumbnail image (1280x720).
+Style: Clean, minimalist, high-impact.
+Color scheme: Solid dark background (near black) with one accent color (red or orange).
+Include very large, bold white text that says: "{title}"
+Text should take up most of the image. One word in red/orange for emphasis.
+Add a subtle red accent line or bar element.
+NO faces, NO people. Typography-focused design.""",
+]
+
+
+def clean_title_for_thumbnail(title):
+    """Clean title for thumbnail text — remove #Shorts and trim."""
+    clean = title.replace("#Shorts", "").replace("#shorts", "").strip()
+    clean = clean.rstrip(".,!?—-").strip()
+    # Truncate very long titles
+    if len(clean) > 60:
+        words = clean.split()
+        clean = " ".join(words[:8])
+    return clean
+
+
+def generate_thumbnail_gemini(title):
+    """Generate thumbnail using Gemini's native image generation."""
+    clean_title = clean_title_for_thumbnail(title)
+    prompt_template = random.choice(THUMBNAIL_PROMPTS)
+    prompt = prompt_template.format(title=clean_title)
+
+    print(f"  Generating with Gemini image model...")
+
+    for attempt in range(3):
+        try:
+            if attempt > 0:
+                wait = 10 * attempt
+                print(f"  Retry {attempt}/2 — waiting {wait}s...")
+                _time.sleep(wait)
+
+            response = client.models.generate_content(
+                model=IMAGE_MODEL,
+                contents=prompt,
+                config=GenerateContentConfig(
+                    response_modalities=[Modality.TEXT, Modality.IMAGE],
+                ),
+            )
+
+            # Extract image from response
+            for part in response.candidates[0].content.parts:
+                if part.inline_data:
+                    image_bytes = part.inline_data.data
+                    img = Image.open(BytesIO(image_bytes))
+                    img = img.convert("RGB")
+                    img = img.resize((THUMB_W, THUMB_H), Image.LANCZOS)
+                    print(f"  Gemini thumbnail generated successfully!")
+                    return img
+
+            print(f"  No image in Gemini response — retrying...")
+
+        except Exception as e:
+            err = str(e).lower()
+            if any(k in err for k in ["429", "overloaded", "resource", "quota", "rate", "unavailable", "503", "500"]):
+                if attempt < 2:
+                    continue
+            print(f"  Gemini image generation failed: {e}")
+            return None
+
+    return None
+
+
+# ── Fallback: Programmatic thumbnail (PIL) ───────────────────────────
 
 FONT_PATHS = [
     "C:/Windows/Fonts/arialbd.ttf",
@@ -27,20 +137,15 @@ FONT_PATHS = [
     "C:/Windows/Fonts/arial.ttf",
 ]
 
-# Cinematic dark gradient colors
-GRADIENT_TOP    = (8, 8, 20)      # Near-black dark blue
-GRADIENT_BOTTOM = (20, 10, 35)    # Dark purple-black
-
-# Text colors
-WHITE     = (255, 255, 255)
-YELLOW    = (255, 215, 0)         # Gold — high visibility
-RED_ACCENT = (220, 30, 30)        # Bold red accent bar
-BLACK     = (0, 0, 0)
-DARK_OVERLAY = (0, 0, 0, 160)    # Semi-transparent overlay
+GRADIENT_TOP    = (8, 8, 20)
+GRADIENT_BOTTOM = (20, 10, 35)
+WHITE      = (255, 255, 255)
+YELLOW     = (255, 215, 0)
+RED_ACCENT = (220, 30, 30)
+BLACK      = (0, 0, 0)
 
 
 def load_font(size):
-    """Load the best available bold font at given size."""
     for fp in FONT_PATHS:
         if os.path.exists(fp):
             try:
@@ -50,11 +155,14 @@ def load_font(size):
     return ImageFont.load_default()
 
 
-def create_dark_gradient():
-    """Create a cinematic dark gradient background (1280x720)."""
+def generate_thumbnail_fallback(title):
+    """Fallback: generate thumbnail using PIL (dark gradient + text)."""
+    print(f"  Using fallback PIL thumbnail generator...")
+
     img  = Image.new("RGB", (THUMB_W, THUMB_H))
     draw = ImageDraw.Draw(img)
 
+    # Dark gradient
     for y in range(THUMB_H):
         ratio = y / THUMB_H
         r = int(GRADIENT_TOP[0] + (GRADIENT_BOTTOM[0] - GRADIENT_TOP[0]) * ratio)
@@ -62,180 +170,56 @@ def create_dark_gradient():
         b = int(GRADIENT_TOP[2] + (GRADIENT_BOTTOM[2] - GRADIENT_TOP[2]) * ratio)
         draw.line([(0, y), (THUMB_W, y)], fill=(r, g, b))
 
-    return img
-
-
-def add_subtle_grid(draw):
-    """Add very faint grid lines for depth (barely visible)."""
-    grid_color = (255, 255, 255, 8)
+    # Grid
     for x in range(0, THUMB_W, 120):
         draw.line([(x, 0), (x, THUMB_H)], fill=(20, 20, 40))
-    for y in range(0, THUMB_H, 120):
-        draw.line([(0, y), (THUMB_W, y)], fill=(20, 20, 40))
+    for y_line in range(0, THUMB_H, 120):
+        draw.line([(0, y_line), (THUMB_W, y_line)], fill=(20, 20, 40))
 
+    font_large  = load_font(120)
+    font_accent = load_font(126)
+    font_small  = load_font(32)
 
-def split_title_for_thumbnail(title):
-    """
-    Split title into 2 display lines, stripping #Shorts.
-    Max 5-6 words per line — prioritize equal visual weight.
-    """
-    # Remove #Shorts and clean up
-    clean = title.replace("#Shorts", "").replace("#shorts", "").strip()
-    # Remove trailing punctuation
-    clean = clean.rstrip(".,!?—-").strip()
-
+    # Split title
+    clean = clean_title_for_thumbnail(title)
     words = clean.upper().split()
 
     if len(words) <= 4:
-        return " ".join(words), ""
-
-    mid = len(words) // 2
-    # Bias slightly toward shorter first line for visual balance
-    if len(words) > 6:
-        mid = max(3, len(words) // 2 - 1)
-
-    line1 = " ".join(words[:mid])
-    line2 = " ".join(words[mid:])
-
-    # Truncate if too long for thumbnail
-    if len(line1) > 24:
-        words_l1 = line1.split()[:4]
-        line1 = " ".join(words_l1)
-    if len(line2) > 24:
-        words_l2 = line2.split()[:4]
-        line2 = " ".join(words_l2)
-
-    return line1, line2
-
-
-def draw_text_with_border(draw, pos, text, font, fill, border_color=BLACK, border_width=4, anchor="mm"):
-    """Draw text with a hard border for maximum readability on any background."""
-    x, y = pos
-    for dx in range(-border_width, border_width + 1):
-        for dy in range(-border_width, border_width + 1):
-            if dx != 0 or dy != 0:
-                draw.text((x + dx, y + dy), text, font=font, fill=border_color, anchor=anchor)
-    draw.text(pos, text, font=font, fill=fill, anchor=anchor)
-
-
-def draw_title_two_color(img, draw, line, y_center, font_main, font_accent):
-    """
-    Draw a line of text where the LAST word is in YELLOW, rest in WHITE.
-    Both have hard black borders.
-    """
-    words = line.split()
-    if not words:
-        return
-
-    if len(words) == 1:
-        draw_text_with_border(draw, (THUMB_W // 2, y_center), words[0],
-                              font_accent, YELLOW, border_width=5)
-        return
-
-    # Split: all words before last = white, last word = yellow
-    main_text   = " ".join(words[:-1])
-    accent_word = words[-1]
-
-    # Measure both parts
-    bbox_main   = draw.textbbox((0, 0), main_text + " ", font=font_main, anchor="lt")
-    bbox_accent = draw.textbbox((0, 0), accent_word, font=font_accent, anchor="lt")
-
-    w_main   = bbox_main[2] - bbox_main[0]
-    w_accent = bbox_accent[2] - bbox_accent[0]
-    total_w  = w_main + w_accent
-
-    # Start X so the full line is centered
-    start_x = (THUMB_W - total_w) // 2
-
-    # Draw white portion
-    draw_text_with_border(
-        draw, (start_x, y_center),
-        main_text + " ", font_main, WHITE,
-        border_width=4, anchor="lt"
-    )
-
-    # Draw yellow accent word
-    draw_text_with_border(
-        draw, (start_x + w_main, y_center),
-        accent_word, font_accent, YELLOW,
-        border_width=5, anchor="lt"
-    )
-
-
-def add_red_accent_bar(draw, y_bar):
-    """Draw a bold red horizontal bar — authority/attention signal."""
-    bar_h  = 7
-    bar_w  = int(THUMB_W * 0.55)
-    bar_x  = (THUMB_W - bar_w) // 2
-    draw.rectangle(
-        [(bar_x, y_bar), (bar_x + bar_w, y_bar + bar_h)],
-        fill=RED_ACCENT
-    )
-    # Subtle glow — slightly wider, more transparent
-    draw.rectangle(
-        [(bar_x - 10, y_bar - 2), (bar_x + bar_w + 10, y_bar + bar_h + 2)],
-        fill=(220, 30, 30, 60)
-    )
-
-
-def add_channel_watermark(draw, font_small):
-    """Add channel watermark bottom-right."""
-    watermark = "@NEXTLEVELMIND"
-    draw_text_with_border(
-        draw,
-        (THUMB_W - 30, THUMB_H - 30),
-        watermark, font_small, (200, 200, 200),
-        border_width=2, anchor="rb"
-    )
-
-
-def generate_thumbnail(title):
-    """
-    Generate a viral, high-CTR YouTube thumbnail.
-    Returns the PIL Image object.
-    """
-    img  = create_dark_gradient()
-    draw = ImageDraw.Draw(img)
-
-    # Subtle grid for depth
-    add_subtle_grid(draw)
-
-    # Fonts
-    font_large  = load_font(120)   # Main title
-    font_accent = load_font(126)   # Yellow accent word — slightly bigger
-    font_small  = load_font(32)    # Watermark
-
-    # Split title into 2 lines
-    line1, line2 = split_title_for_thumbnail(title)
-
-    has_two_lines = bool(line2)
-
-    if has_two_lines:
-        # Two-line layout: evenly spaced around vertical center
-        y1 = THUMB_H // 2 - 70
-        y2 = THUMB_H // 2 + 70
-
-        draw_title_two_color(img, draw, line1, y1, font_large, font_accent)
-
-        # Red accent bar between lines
-        add_red_accent_bar(draw, THUMB_H // 2 - 10)
-
-        draw_title_two_color(img, draw, line2, y2, font_large, font_accent)
+        line1, line2 = " ".join(words), ""
     else:
-        # Single line — centered
-        draw_title_two_color(img, draw, line1, THUMB_H // 2, font_large, font_accent)
-        add_red_accent_bar(draw, THUMB_H // 2 + 80)
+        mid = max(3, len(words) // 2 - 1) if len(words) > 6 else len(words) // 2
+        line1 = " ".join(words[:mid])
+        line2 = " ".join(words[mid:])
 
-    # Channel watermark
-    add_channel_watermark(draw, font_small)
+    def draw_bordered(pos, text, font, fill, bw=4, anchor="mm"):
+        x, y = pos
+        for dx in range(-bw, bw + 1):
+            for dy in range(-bw, bw + 1):
+                if dx or dy:
+                    draw.text((x+dx, y+dy), text, font=font, fill=BLACK, anchor=anchor)
+        draw.text(pos, text, font=font, fill=fill, anchor=anchor)
+
+    if line2:
+        draw_bordered((THUMB_W//2, THUMB_H//2 - 70), line1, font_large, WHITE)
+        draw_bordered((THUMB_W//2, THUMB_H//2 + 70), line2, font_accent, YELLOW, bw=5)
+    else:
+        draw_bordered((THUMB_W//2, THUMB_H//2), line1, font_accent, YELLOW, bw=5)
+
+    # Red bar
+    bar_w = int(THUMB_W * 0.55)
+    bar_x = (THUMB_W - bar_w) // 2
+    draw.rectangle([(bar_x, THUMB_H//2 - 5), (bar_x + bar_w, THUMB_H//2 + 2)], fill=RED_ACCENT)
+
+    # Watermark
+    draw_bordered((THUMB_W - 30, THUMB_H - 30), "@NEXTLEVELMIND", font_small,
+                  (200, 200, 200), bw=2, anchor="rb")
 
     return img
 
 
 def main():
     print("=" * 50)
-    print("  Thumbnail Generator — High CTR Design")
-    print("  Style: Dark cinematic + Yellow accent + Red bar")
+    print("  Thumbnail Generator — Gemini AI + Fallback")
     print("=" * 50)
 
     if not os.path.exists("output/seo_data.json"):
@@ -246,17 +230,20 @@ def main():
         seo = json.load(f)
 
     title = seo["youtube_title"]
-    print(f"\n  Title   : {title}")
+    print(f"\n  Title: {title}")
 
-    print("\n  Generating thumbnail...")
-    img = generate_thumbnail(title)
-    img = img.resize((1280, 720), Image.LANCZOS)
+    # Try Gemini first, fall back to PIL
+    img = None
+    if GEMINI_IMAGE_AVAILABLE:
+        img = generate_thumbnail_gemini(title)
+
+    if img is None:
+        img = generate_thumbnail_fallback(title)
+
     img.save("output/thumbnail.jpg", quality=97, optimize=True)
 
-    print("\n" + "=" * 50)
-    print("  Done! Thumbnail saved: output/thumbnail.jpg")
-    print("  Size: 1280x720 | Style: Dark cinematic")
-    print("  Design: White title + Yellow accent + Red bar")
+    size_kb = os.path.getsize("output/thumbnail.jpg") // 1024
+    print(f"\n  Saved: output/thumbnail.jpg ({size_kb} KB)")
     print("=" * 50)
     print("\n  Next step: Run 07_upload.py")
 

@@ -518,15 +518,33 @@ def burn_end_card(video_path, total_duration):
     return False
 
 
-def mix_music_into(input_video, output_video, label=""):
+def get_random_music():
+    """Pick a random music track from the music/ folder."""
+    music_dir = "music"
+    if not os.path.exists(music_dir):
+        return None
+
+    tracks = [
+        os.path.join(music_dir, f)
+        for f in os.listdir(music_dir)
+        if f.lower().endswith((".mp3", ".wav", ".aac", ".m4a", ".ogg"))
+    ]
+
+    if not tracks:
+        return None
+
+    chosen = random.choice(tracks)
+    print(f"  Music track: {os.path.basename(chosen)}")
+    return chosen
+
+
+def mix_music_into(input_video, output_video, music_file=None, label=""):
     """
     Mix background music into a video file.
     Voice 100% + music 18%. Video stream copied (no re-encode).
     Returns True if output was created successfully.
     """
-    music_file = "music/background.mp3"
-
-    if not os.path.exists(music_file):
+    if not music_file or not os.path.exists(music_file):
         # No music — just copy
         shutil.copy2(input_video, output_video)
         return True
@@ -563,16 +581,17 @@ def mix_background_music():
     Mix background music into both video versions:
       1. video_no_music.mp4 (with subs) → final_video.mp4 (YouTube)
       2. video_clean.mp4 (no subs)      → video_for_reel.mp4 (Instagram)
+    Picks a random track from music/ folder each run.
     """
-    music_file = "music/background.mp3"
+    music_file = get_random_music()
 
-    if not os.path.exists(music_file):
-        print("  No background music found — using voice only")
-        print("  Add a track to music/background.mp3 for cinematic effect")
+    if not music_file:
+        print("  No music tracks found in music/ — using voice only")
+        print("  Add .mp3/.wav tracks to music/ for cinematic effect")
 
     # ── YouTube version: subtitles + music ────────────────────────────
     print("  Mixing music into YouTube version...")
-    mix_music_into("output/video_no_music.mp4", "output/final_video.mp4")
+    mix_music_into("output/video_no_music.mp4", "output/final_video.mp4", music_file)
 
     if os.path.exists("output/final_video.mp4"):
         size_mb = os.path.getsize("output/final_video.mp4") // (1024 * 1024)
@@ -584,7 +603,7 @@ def mix_background_music():
     # ── Reel version: NO subtitles + music ────────────────────────────
     if os.path.exists("output/video_clean.mp4"):
         print("  Mixing music into reel version (no subtitles)...")
-        mix_music_into("output/video_clean.mp4", "output/video_for_reel.mp4")
+        mix_music_into("output/video_clean.mp4", "output/video_for_reel.mp4", music_file)
 
         if os.path.exists("output/video_for_reel.mp4"):
             size_mb = os.path.getsize("output/video_for_reel.mp4") // (1024 * 1024)

@@ -10,6 +10,7 @@ STEPS = [
     ("04_get_footage.py",   "Selecting footage (2 random categories)"),
     ("05_make_video.py",    "Assembling video (FFmpeg)"),
     ("07_upload.py",        "Uploading to YouTube Shorts"),
+    ("community_post.py",   "Generating YouTube Community Post"),
 ]
 
 
@@ -39,6 +40,14 @@ def cleanup_output():
     if os.path.exists("output/final_video.mp4"):
         shutil.copy2("output/final_video.mp4", f"{archive_dir}/video_{timestamp}.mp4")
         print(f"  Video backed up: archive/video_{timestamp}.mp4")
+
+    if os.path.exists("output/community_post.jpg"):
+        shutil.copy2("output/community_post.jpg", f"{archive_dir}/community_post_{timestamp}.jpg")
+        print(f"  Community post image backed up: archive/community_post_{timestamp}.jpg")
+
+    if os.path.exists("output/community_post_text.txt"):
+        shutil.copy2("output/community_post_text.txt", f"{archive_dir}/community_post_{timestamp}.txt")
+        print(f"  Community post text backed up: archive/community_post_{timestamp}.txt")
 
     saved_token = None
     if os.path.exists("output/token.json"):
@@ -119,7 +128,7 @@ def run_pipeline(video_num, schedule_utc, schedule_label):
     upload_success = True
     for i, (script, label) in enumerate(STEPS, 1):
         # Upload step is optional — don't crash pipeline if it fails
-        optional = script in ("07_upload.py",)
+        optional = script in ("07_upload.py", "community_post.py")
         result = run_step(script, label, i, total, optional=optional)
         if script == "07_upload.py" and not result:
             upload_success = False

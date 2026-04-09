@@ -394,10 +394,28 @@ def burn_end_card(video_path, total_duration):
     return False
 
 
-def mix_music_into(input_video, output_video):
-    music_file = "music/background.mp3"
+def get_random_music():
+    """Pick a random music track from the music/ folder."""
+    music_dir = "music"
+    if not os.path.exists(music_dir):
+        return None
 
-    if not os.path.exists(music_file):
+    tracks = [
+        os.path.join(music_dir, f)
+        for f in os.listdir(music_dir)
+        if f.lower().endswith((".mp3", ".wav", ".aac", ".m4a", ".ogg"))
+    ]
+
+    if not tracks:
+        return None
+
+    chosen = random.choice(tracks)
+    print(f"  Music track: {os.path.basename(chosen)}")
+    return chosen
+
+
+def mix_music_into(input_video, output_video, music_file=None):
+    if not music_file or not os.path.exists(music_file):
         shutil.copy2(input_video, output_video)
         return True
 
@@ -428,13 +446,13 @@ def mix_music_into(input_video, output_video):
 
 
 def mix_background_music():
-    music_file = "music/background.mp3"
+    music_file = get_random_music()
 
-    if not os.path.exists(music_file):
-        print("  No background music found — copying voice-only version...")
+    if not music_file:
+        print("  No music tracks found in music/ — using voice only")
     else:
         print("  Mixing music into video...")
-    mix_music_into("output/video_no_music.mp4", "output/final_video.mp4")
+    mix_music_into("output/video_no_music.mp4", "output/final_video.mp4", music_file)
 
     if os.path.exists("output/final_video.mp4"):
         size_mb = os.path.getsize("output/final_video.mp4") // (1024 * 1024)
