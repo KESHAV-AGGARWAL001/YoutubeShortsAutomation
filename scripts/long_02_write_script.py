@@ -363,6 +363,42 @@ Make it feel like a movie synopsis, not a YouTube template.""",
 ]
 
 
+def _load_competitor_insights():
+    """Load competitor analysis insights if available."""
+    insights_file = "output/competitor_insights.json"
+    if not os.path.exists(insights_file):
+        return ""
+    try:
+        with open(insights_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        insights = data.get("insights", {})
+        if not insights:
+            return ""
+
+        parts = []
+        parts.append("━━━━━━━━━━━━━━━━━━━━━━━━")
+        parts.append("COMPETITOR INSIGHTS (from recent top-performing videos in your niche):")
+        parts.append("━━━━━━━━━━━━━━━━━━━━━━━━")
+
+        if insights.get("title_patterns"):
+            parts.append("Title formulas working RIGHT NOW:")
+            for p in insights["title_patterns"][:5]:
+                parts.append(f"  - {p}")
+
+        if insights.get("trending_topics"):
+            parts.append("Trending topics this week:")
+            for t in insights["trending_topics"][:5]:
+                parts.append(f"  - {t}")
+
+        if insights.get("hook_words"):
+            parts.append(f"Power words: {', '.join(insights['hook_words'][:8])}")
+
+        parts.append("Use these insights to craft titles and hooks that match current trends.\n")
+        return "\n".join(parts)
+    except Exception:
+        return ""
+
+
 def write_long_script(book_page_text, book_name):
     # Randomize prompt elements to avoid template detection
     desc_style = random.choice(LONG_DESCRIPTION_STYLES)
@@ -371,6 +407,8 @@ def write_long_script(book_page_text, book_name):
     style_names = ["SEO-conversational", "curiosity-hook", "value-minimal", "story-teaser"]
     print(f"  Prompt style: {style_names[style_idx]} | Tags: {tag_count}")
 
+    competitor_context = _load_competitor_insights()
+
     prompt = f"""You are an elite YouTube retention strategist who understands exactly how the algorithm works for long-form content. You know that YouTube measures:
 - Click-through rate (thumbnail + title → must be irresistible)
 - Average view duration (AVD) — the #1 metric. If people watch 5+ minutes of an 8-minute video, YouTube pushes it to MILLIONS.
@@ -378,7 +416,7 @@ def write_long_script(book_page_text, book_name):
 
 Your job is to write scripts that KEEP PEOPLE WATCHING. Every sentence must earn the next 5 seconds of their attention.
 
-INPUT BOOK TEXT (use as INSPIRATION ONLY — do NOT copy, quote, or closely paraphrase):
+{competitor_context}INPUT BOOK TEXT (use as INSPIRATION ONLY — do NOT copy, quote, or closely paraphrase):
 {book_page_text}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━

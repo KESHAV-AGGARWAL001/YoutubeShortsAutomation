@@ -1,9 +1,11 @@
 # NextLevelMind — Pipeline Commands Reference
 
-> **Quick answer:** To run everything daily, open a terminal in `C:\YoutubeShortsAutomation\` and run:
+> **Quick answer:** Open a terminal in `C:\YoutubeShortsAutomation\` and run:
 > ```
-> python main.py          ← 2 YouTube Shorts per day
-> python long_form_main.py  ← 1 long-form video per day
+> start.bat                  ← WEB DASHBOARD: visual UI to create, edit, preview & upload
+> python batch_main.py       ← WEEKLY: 14 Shorts + 7 long-form in one run (recommended)
+> python main.py             ← DAILY:  2 YouTube Shorts per day
+> python long_form_main.py   ← DAILY:  1 long-form video per day
 > ```
 > That's it. Everything else is automatic.
 
@@ -12,14 +14,21 @@
 ## Table of Contents
 
 1. [First-Time Setup](#1-first-time-setup)
-2. [Daily Routine — What to Run](#2-daily-routine)
-3. [Shorts Pipeline — Full Auto](#3-shorts-pipeline)
-4. [Long-Form Pipeline — Full Auto](#4-long-form-pipeline)
-5. [Run Individual Steps Manually](#5-run-individual-steps-manually)
-6. [Community Post Email](#6-community-post-email)
-7. [Folder Structure](#7-folder-structure)
-8. [Output Files Explained](#8-output-files-explained)
-9. [Troubleshooting](#9-troubleshooting)
+2. [Web Dashboard (NEW)](#2-web-dashboard)
+3. [Daily Routine — What to Run](#3-daily-routine)
+4. [Shorts Pipeline — Full Auto](#4-shorts-pipeline)
+5. [Long-Form Pipeline — Full Auto](#5-long-form-pipeline)
+6. [Run Individual Steps Manually](#6-run-individual-steps-manually)
+7. [Community Post Email](#7-community-post-email)
+8. [Folder Structure](#8-folder-structure)
+9. [Output Files Explained](#9-output-files-explained)
+10. [Troubleshooting](#10-troubleshooting)
+11. [Weekly Batch Production](#11-weekly-batch-production)
+12. [Multi-Language Shorts](#12-multi-language-shorts)
+13. [Competitor Analysis](#13-competitor-analysis)
+14. [Avatar Overlay](#14-avatar-overlay)
+15. [Known Limitations](#15-known-limitations)
+16. [Complete Script Inventory](#16-complete-script-inventory)
 
 ---
 
@@ -51,6 +60,11 @@ Create a file named `.env` in `C:\YoutubeShortsAutomation\` with these values:
 GEMINI_API_KEY=your_gemini_api_key_for_text
 GEMINI_IMAGE_API_KEY=your_gemini_api_key_for_images
 
+SCRIPT_VERSION=v2                              # "v1" (original) or "v2" (retention-optimized + HuggingFace)
+AI_PROVIDER=gemini                             # "gemini" (default) or "huggingface"
+HF_TOKEN=hf_xxxxxxxxxxxxxxxxxxxxxxxx           # HuggingFace access token (only if AI_PROVIDER=huggingface)
+HF_MODEL=google/gemma-3-27b-it                 # HuggingFace model to use
+
 INSTAGRAM_TOKEN=your_instagram_long_lived_token
 INSTAGRAM_ID=your_instagram_business_account_id
 
@@ -64,12 +78,17 @@ COMMUNITY_POST_APP_PASSWORD=xxxx xxxx xxxx xxxx
 |-----|----------------|----------|
 | `GEMINI_API_KEY` | aistudio.google.com → Get API key | Script writing, SEO, captions |
 | `GEMINI_IMAGE_API_KEY` | aistudio.google.com → Get API key (separate account/project) | Thumbnail + quote card image generation |
+| `SCRIPT_VERSION` | Set to `v2` to use retention-optimized prompts | Script generation (v1 or v2) |
+| `AI_PROVIDER` | Set to `huggingface` to use Gemma instead of Gemini | Script generation AI model |
+| `HF_TOKEN` | huggingface.co → Settings → Access Tokens → New token | HuggingFace Inference API auth |
+| `HF_MODEL` | Any chat model on HuggingFace (e.g. `google/gemma-3-27b-it`) | HuggingFace model selection |
 | `INSTAGRAM_TOKEN` | Follow `instagram_setup_guide.md` | Instagram uploads |
 | `INSTAGRAM_ID` | Follow `instagram_setup_guide.md` | Instagram uploads |
 | `COMMUNITY_POST_EMAIL` | Your Gmail address | Community post emails |
 | `COMMUNITY_POST_APP_PASSWORD` | myaccount.google.com → Security → App passwords → Generate | Community post emails |
 
 > If `GEMINI_IMAGE_API_KEY` is not set, image generation automatically falls back to `GEMINI_API_KEY`.
+> If `AI_PROVIDER=huggingface` fails, the script automatically falls back to Gemini.
 
 ### Step 4 — Place required files
 
@@ -93,9 +112,65 @@ A browser will open asking you to log in to YouTube. Do it once — the token is
 
 ---
 
-## 2. Daily Routine
+## 2. Web Dashboard
 
-Run these every day. Both can run on the same day.
+A visual web UI for creating, editing, previewing, and uploading YouTube Shorts — without touching the command line.
+
+### First-Time Setup
+
+```bash
+# 1. Install backend dependencies (one time)
+pip install fastapi uvicorn python-multipart
+
+# 2. Install frontend dependencies (one time)
+cd frontend
+npm install
+cd ..
+```
+
+### Starting the Dashboard
+
+```bash
+# Option A — Double-click (Windows)
+start.bat
+
+# Option B — Manual (two terminals)
+# Terminal 1:
+python -m server.run
+
+# Terminal 2:
+cd frontend && npm run dev
+```
+
+Open **http://localhost:5173** in your browser.
+
+### What You Can Do
+
+| Feature | How |
+|---------|-----|
+| **Paste custom content** | Switch to "Custom Text" tab, paste your content |
+| **Custom AI prompt** | Write your own prompt for Gemini in the prompt box |
+| **Edit AI script** | Modify hook, body, CTA in the Script tab, click Save |
+| **Edit SEO data** | Switch to SEO tab — edit title, description, tags |
+| **Preview video** | After assembling, switch to Preview tab to watch |
+| **Run individual steps** | Click buttons: Generate Voiceover → Assemble Video → Thumbnail |
+| **Run full pipeline** | Click "Run All" — all steps run automatically with live progress |
+| **Upload to YouTube** | Set schedule time and click Upload |
+
+### Architecture
+
+- **Backend**: FastAPI on port 8000 — wraps existing pipeline scripts
+- **Frontend**: React + Vite on port 5173 — proxies `/api` to backend
+- **No database** — uses same `output/` files as CLI pipeline
+- **CLI still works** — `python main.py` and `python batch_main.py` are unchanged
+
+---
+
+## 3. Daily Routine
+
+You have two modes: **daily** (run every day) or **weekly batch** (run once per week).
+
+### Option A — Daily mode (run every day)
 
 | What | Command | Time to run | Videos produced |
 |------|---------|-------------|-----------------|
@@ -109,12 +184,27 @@ python long_form_main.py     ← Run first (uploads at 6 AM EST)
 python main.py               ← Run after (uploads at 9 AM + 4 PM EST)
 ```
 
-> Both can be run back-to-back. The long-form pipeline uses a separate book progress
-> tracker (`books/long_progress.json`) so it never conflicts with Shorts.
+### Option B — Weekly batch (run once per week)
+
+| What | Command | Time to run | Videos produced |
+|------|---------|-------------|-----------------|
+| Entire week | `python batch_main.py` | ~2-3 hours | 14 Shorts + 7 long-form |
+| Multi-language | `python scripts/multi_language.py` | ~30-45 minutes | 4 language versions per Short |
+| Competitor analysis | `python scripts/competitor_analysis.py` | ~3 minutes | Trend insights saved |
+
+**Recommended weekly workflow:**
+```
+python scripts/competitor_analysis.py   ← Step 1: Scrape trends (run first)
+python batch_main.py                    ← Step 2: Generate + upload 21 English videos
+python scripts/multi_language.py        ← Step 3: Generate Hindi/Spanish/Portuguese/Arabic
+```
+Then upload multi-language videos to separate YouTube channels manually.
+
+> Both modes use separate book progress trackers so Shorts and long-form never conflict.
 
 ---
 
-## 3. Shorts Pipeline — Full Auto
+## 4. Shorts Pipeline — Full Auto
 
 **Command:**
 ```
@@ -146,7 +236,7 @@ archive\community_post_YYYYMMDD_HHMMSS.txt
 
 ---
 
-## 4. Long-Form Pipeline — Full Auto
+## 5. Long-Form Pipeline — Full Auto
 
 **Command:**
 ```
@@ -171,7 +261,7 @@ python long_form_main.py
 
 ---
 
-## 5. Run Individual Steps Manually
+## 6. Run Individual Steps Manually
 
 Use these when a single step fails and you want to retry without re-running everything.
 
@@ -227,19 +317,29 @@ python scripts/long_07_upload.py
 python scripts/community_post.py
 ```
 
-### Utilities
+### Growth tools
 
 ```bash
-# Send community post email only (image + caption already generated)
-python scripts/community_post.py
+# Competitor analysis (scrape top Shorts, analyze patterns)
+python scripts/competitor_analysis.py
 
-# Check analytics performance data
-# (auto-updated each run — view analytics_performance.json)
+# Multi-language Shorts (all 4 languages)
+python scripts/multi_language.py
+
+# Multi-language (specific languages only)
+python scripts/multi_language.py hi es
+
+# Avatar overlay (after video assembly)
+python scripts/avatar_overlay.py
+python scripts/avatar_overlay.py --position right --size 200
+
+# Community post email only
+python scripts/community_post.py
 ```
 
 ---
 
-## 6. Community Post Email
+## 7. Community Post Email
 
 After every pipeline run, you'll get an email like this:
 
@@ -272,33 +372,42 @@ myaccount.google.com → Security → 2-Step Verification → App passwords → 
 
 ---
 
-## 7. Folder Structure
+## 8. Folder Structure
 
 ```
 C:\YoutubeShortsAutomation\
 │
-├── main.py                  ← Run this for Shorts (2 videos/day)
-├── long_form_main.py        ← Run this for long-form (1 video/day)
+├── main.py                  ← Daily: 2 Shorts/day
+├── long_form_main.py        ← Daily: 1 long-form/day
+├── batch_main.py            ← Weekly: 14 Shorts + 7 long-form in one run
 │
 ├── scripts\
-│   ├── 02_write_script.py       Shorts: script generation
-│   ├── 03_voiceover.py          Voiceover (used by both pipelines)
-│   ├── 04_get_footage.py        Footage selection (used by both)
-│   ├── 05_make_video.py         Shorts: video assembly
-│   ├── 06_thumbnail.py          Shorts: AI thumbnail
-│   ├── 07_upload.py             Shorts: YouTube upload
+│   ├── 02_write_script.py       Shorts: script generation (v1)
+│   ├── 02_write_script_v2.py    Shorts: retention-optimized script (v2)
+│   ├── 03_voiceover.py          Voiceover via Edge TTS (shared)
+│   ├── 04_get_footage.py        Footage selection (shared)
+│   ├── 05_make_video.py         Shorts: video assembly (9:16)
+│   ├── 06_thumbnail.py          Shorts: AI thumbnail (Gemini)
+│   ├── 07_upload.py             Shorts: YouTube upload (no playlist)
+│   ├── 07_upload_v2.py          Shorts: YouTube upload + auto-playlist
 │   ├── long_02_write_script.py  Long-form: script generation
-│   ├── long_05_make_video.py    Long-form: video assembly
-│   ├── long_06_thumbnail.py     Long-form: AI thumbnail
+│   ├── long_05_make_video.py    Long-form: video assembly (16:9)
+│   ├── long_06_thumbnail.py     Long-form: AI thumbnail (Gemini)
 │   ├── long_07_upload.py        Long-form: YouTube upload
-│   └── community_post.py        Community post + email (both pipelines)
+│   ├── community_post.py        Community post + email (both pipelines)
+│   ├── multi_language.py        Translate + generate multi-language Shorts
+│   ├── competitor_analysis.py   Scrape top Shorts + analyze patterns
+│   ├── avatar_overlay.py        Overlay character avatar on video
+│   ├── analytics_tracker.py     Upload analytics logging
+│   └── get_trending_tags.py     Trending tag injector
 │
 ├── books\                   ← Your PDF books go here
 │   ├── progress.json            Tracks Shorts reading position per book
 │   └── long_progress.json       Tracks long-form reading position per book
 │
-├── stock\                   ← Stock background videos (.mp4, .mov, .avi)
+├── stock\                   ← Stock background videos (.mp4, .mov, .avi, .mkv)
 ├── music\                   ← Background music tracks (.mp3, .wav, .aac, .m4a)
+├── avatar\                  ← Character avatar image (avatar.png, transparent PNG)
 │
 ├── output\                  ← Working folder (auto-cleared after each run)
 │   ├── seo_data.json            Title, description, tags for current video
@@ -307,13 +416,16 @@ C:\YoutubeShortsAutomation\
 │   ├── final_video.mp4          Assembled video ready for upload
 │   ├── thumbnail.jpg            AI-generated thumbnail
 │   ├── community_post.jpg       Quote card image for community post
-│   └── community_post_text.txt  Caption text for community post
+│   ├── community_post_text.txt  Caption text for community post
+│   ├── competitor_insights.json Competitor analysis results
+│   ├── lang_hi\                 Hindi translated video + sections
+│   ├── lang_es\                 Spanish translated video + sections
+│   ├── lang_pt\                 Portuguese translated video + sections
+│   ├── lang_ar\                 Arabic translated video + sections
+│   ├── token.json               YouTube auth (preserved across runs)
+│   └── playlist_cache.json      Playlist ID cache (preserved across runs)
 │
 ├── archive\                 ← Permanent backup after each run
-│   ├── video_TIMESTAMP.mp4
-│   ├── long_video_TIMESTAMP.mp4
-│   ├── community_post_TIMESTAMP.jpg
-│   └── community_post_TIMESTAMP.txt
 │
 ├── credentials.json         ← YouTube API credentials (from Google Cloud)
 ├── .env                     ← API keys (GEMINI, Instagram, Gmail)
@@ -322,7 +434,7 @@ C:\YoutubeShortsAutomation\
 
 ---
 
-## 8. Output Files Explained
+## 9. Output Files Explained
 
 After each pipeline run, these files are in `output\` (and backed up to `archive\`):
 
@@ -340,7 +452,7 @@ After each pipeline run, these files are in `output\` (and backed up to `archive
 
 ---
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 ### "output/seo_data.json not found"
 The script step didn't run or failed. Run step 1 first:
@@ -390,6 +502,111 @@ Add at least one `.mp3` file to the `music\` folder. The pipeline picks one rand
 
 ---
 
+## 11. Weekly Batch Production
+
+Generate an entire week's content (14 Shorts + 7 Long-form) in one run:
+
+```
+python batch_main.py
+```
+
+**What it does:**
+- Calculates 7 days of schedules starting tomorrow
+- For each day: generates 1 long-form + 2 Shorts
+- Uploads all 21 videos with staggered publish times
+- Auto-creates playlists per book (via `07_upload_v2.py`)
+- Archives everything to `archive/`
+- Sends community post emails for each video
+
+**Schedule per day:**
+| Slot | Time (EST) | Type |
+|------|-----------|------|
+| 1 | 6:00 AM | Long-form |
+| 2 | 9:00 AM | Short #1 |
+| 3 | 4:00 PM | Short #2 |
+
+**Script version:** Set `SCRIPT_VERSION=v2` in `.env` to use retention-optimized scripts.
+
+---
+
+## 12. Multi-Language Shorts
+
+Generate translated Shorts in Hindi, Spanish, Portuguese, Arabic:
+
+```bash
+# All 4 languages
+python scripts/multi_language.py
+
+# Only specific languages
+python scripts/multi_language.py hi es       # Hindi + Spanish only
+python scripts/multi_language.py pt ar       # Portuguese + Arabic only
+```
+
+**What it does:**
+1. Reads English sections from `output/sections/`
+2. Translates each section via Gemini
+3. Generates voiceover in target language (Edge TTS)
+4. Assembles video with stock background
+5. Saves to `output/lang_hi/`, `output/lang_es/`, etc.
+
+**Language voices:**
+| Code | Language | Voice |
+|------|----------|-------|
+| hi | Hindi | hi-IN-MadhurNeural |
+| es | Spanish | es-MX-JorgeNeural |
+| pt | Portuguese | pt-BR-AntonioNeural |
+| ar | Arabic | ar-SA-HamedNeural |
+
+**Run AFTER** `02_write_script.py` (needs English sections to exist).
+
+---
+
+## 13. Competitor Analysis
+
+Scrape top-performing Shorts in your niche and feed winning patterns into prompts:
+
+```
+python scripts/competitor_analysis.py
+```
+
+**What it does:**
+1. Searches YouTube for top Shorts (8 niche queries)
+2. Pulls stats: views, likes, titles, tags from top 50+ Shorts
+3. Gemini analyzes winning title formulas, power words, trending topics
+4. Saves insights to `output/competitor_insights.json`
+
+**Run weekly BEFORE `batch_main.py`** to keep your content aligned with trends.
+
+> **Auto-wired:** Both `02_write_script.py` and `long_02_write_script.py` automatically
+> read `output/competitor_insights.json` and inject trending title patterns, power words,
+> and trending topics into the Gemini prompt. Run competitor analysis weekly to keep fresh.
+
+---
+
+## 14. Avatar Overlay
+
+Overlay a static character avatar on your videos for brand recognition:
+
+```bash
+# Default (bottom-left, 160px)
+python scripts/avatar_overlay.py
+
+# Custom position and size
+python scripts/avatar_overlay.py --position right --size 200
+```
+
+**Setup:**
+1. Create folder: `avatar/`
+2. Place your character image: `avatar/avatar.png` (PNG, transparent background, 400x400px+)
+3. Run the script after video assembly
+
+**Avatar sources (free):**
+- Generate with Gemini image generation
+- Canva AI avatar generator
+- Remove background from any photo at remove.bg
+
+---
+
 ## Quick Reference Card
 
 ```
@@ -397,11 +614,18 @@ Add at least one `.mp3` file to the `music\` folder. The pipeline picks one rand
   DAILY COMMANDS — Run from C:\YoutubeShortsAutomation\
 ════════════════════════════════════════════════
 
+  Web Dashboard (visual UI):
+    start.bat
+    → Opens http://localhost:5173
+
   Full Shorts pipeline (2 videos):
     python main.py
 
   Full Long-form pipeline (1 video):
     python long_form_main.py
+
+  Weekly batch (14 Shorts + 7 Long-form):
+    python batch_main.py
 
   Retry failed upload (Shorts):
     python scripts/07_upload.py
@@ -411,6 +635,22 @@ Add at least one `.mp3` file to the `music\` folder. The pipeline picks one rand
 
   Generate community post only:
     python scripts/community_post.py
+
+════════════════════════════════════════════════
+  GROWTH TOOLS
+════════════════════════════════════════════════
+
+  Competitor analysis (run weekly):
+    python scripts/competitor_analysis.py
+
+  Multi-language Shorts (all 4):
+    python scripts/multi_language.py
+
+  Multi-language (specific):
+    python scripts/multi_language.py hi es
+
+  Avatar overlay:
+    python scripts/avatar_overlay.py
 
   First-time setup:
     pip install -r requirements.txt
@@ -424,4 +664,107 @@ Add at least one `.mp3` file to the `music\` folder. The pipeline picks one rand
   Short #2    →  4:00 PM EST  (21:00 UTC)
 
 ════════════════════════════════════════════════
+  RECOMMENDED WEEKLY WORKFLOW
+════════════════════════════════════════════════
+
+  1. python scripts/competitor_analysis.py
+  2. python batch_main.py
+  3. python scripts/multi_language.py
+  4. Upload multi-language videos to separate channels
+
+════════════════════════════════════════════════
 ```
+
+---
+
+## 15. Known Limitations
+
+| Item | Status | Details |
+|------|--------|---------|
+| **Competitor insights → prompt** | Wired | `competitor_analysis.py` saves insights → `02_write_script.py` and `long_02_write_script.py` auto-read them and inject trending patterns into the Gemini prompt. Run `competitor_analysis.py` weekly to keep insights fresh. |
+| **Multi-language upload** | Manual | Translated videos are generated to `output/lang_*/` but must be uploaded manually to separate YouTube channels per language. |
+| **Voice cloning** | Not available | Coqui XTTS v2 requires GPU with 4GB+ VRAM. Current setup uses Edge TTS (free, no GPU). ElevenLabs free tier (10K chars/month) is an alternative if custom voice is needed. |
+| **Avatar setup** | Manual | You must provide `avatar/avatar.png` (transparent PNG). Generate one using Gemini image generation, Canva AI, or remove.bg. |
+| **Affiliate links** | Placeholder | `02_write_script.py` and `long_02_write_script.py` have placeholder Amazon URLs (`https://amzn.to/REPLACE_*`). Replace with your actual affiliate links. |
+| **Community post upload** | Manual | YouTube Community Posts API is not publicly available. The pipeline generates everything + emails it to you. Manual upload in YouTube Studio takes < 60 seconds. |
+| **Community post access** | 500+ subs | YouTube Community Posts tab only appears after 500 subscribers. |
+
+---
+
+## 16. Complete Script Inventory
+
+### Pipeline runners (run from project root)
+
+| Script | Purpose | Videos/run |
+|--------|---------|------------|
+| `main.py` | Daily Shorts pipeline | 2 Shorts |
+| `long_form_main.py` | Daily long-form pipeline | 1 long-form |
+| `batch_main.py` | Weekly batch production | 14 Shorts + 7 long-form |
+
+### Core pipeline scripts (in `scripts/`)
+
+| Script | Step | Used by |
+|--------|------|---------|
+| `02_write_script.py` | Script generation (v1) | Shorts |
+| `02_write_script_v2.py` | Script generation (v2 retention-optimized) | Shorts (if `SCRIPT_VERSION=v2`) |
+| `long_02_write_script.py` | Script generation | Long-form |
+| `03_voiceover.py` | Edge TTS voiceover | Both |
+| `04_get_footage.py` | Stock video selection | Both |
+| `05_make_video.py` | 9:16 video assembly | Shorts |
+| `long_05_make_video.py` | 16:9 video assembly | Long-form |
+| `06_thumbnail.py` | AI thumbnail (Gemini) | Shorts |
+| `long_06_thumbnail.py` | AI thumbnail (Gemini) | Long-form |
+| `07_upload.py` | YouTube upload (no playlist) | Shorts (daily) |
+| `07_upload_v2.py` | YouTube upload + auto-playlist | Shorts (batch) |
+| `long_07_upload.py` | YouTube upload | Long-form |
+
+### Growth tools (in `scripts/`)
+
+| Script | Purpose | When to run |
+|--------|---------|-------------|
+| `community_post.py` | Quote card + caption + email | Auto (end of every pipeline run) |
+| `competitor_analysis.py` | Scrape + analyze top Shorts | Weekly, before `batch_main.py` |
+| `multi_language.py` | Translate → voiceover → video (4 languages) | After English Shorts are generated |
+| `avatar_overlay.py` | Overlay character avatar on video | After video assembly, before upload |
+
+### Web Dashboard (in `server/` and `frontend/`)
+
+| File/Folder | Purpose |
+|-------------|---------|
+| `server/app.py` | FastAPI app — CORS, static mounts, router registration |
+| `server/run.py` | Entry point: `python -m server.run` starts on port 8000 |
+| `server/models/schemas.py` | Pydantic models for all API request/response types |
+| `server/routers/` | API endpoints: books, script, voiceover, video, thumbnail, upload, pipeline, settings |
+| `server/services/state.py` | Pipeline state management with SSE event streaming |
+| `server/services/pipeline_runner.py` | Wraps existing scripts, runs them in background threads |
+| `server/services/script_service.py` | Custom content injection — bypasses book reading for pasted text |
+| `frontend/` | React + TypeScript + Vite app |
+| `frontend/vite.config.ts` | Proxy: `/api` → `http://127.0.0.1:8000` |
+| `start.bat` | Launches both backend and frontend servers |
+
+### Utilities (in `scripts/`)
+
+| Script | Purpose |
+|--------|---------|
+| `analytics_tracker.py` | Logs upload data for performance tracking |
+| `get_trending_tags.py` | Injects trending tags into uploads |
+
+### Image generation model
+
+All thumbnail and quote card image generation uses:
+```
+Model: gemini-3.1-flash-image-preview
+API Key: GEMINI_IMAGE_API_KEY (falls back to GEMINI_API_KEY)
+```
+
+### Voice generation
+
+All voiceovers use Edge TTS (free, no GPU required):
+
+| Language | Voice ID |
+|----------|----------|
+| English | en-US-GuyNeural (default) |
+| Hindi | hi-IN-MadhurNeural |
+| Spanish | es-MX-JorgeNeural |
+| Portuguese | pt-BR-AntonioNeural |
+| Arabic | ar-SA-HamedNeural |

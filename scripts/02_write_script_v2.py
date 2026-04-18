@@ -1,3 +1,18 @@
+"""
+02_write_script_v2.py — Retention-Optimized Shorts Script Generator
+
+V2 improvements over v1:
+  - Hook-first structure with open loops, scroll stoppers, FOMO triggers
+  - Stronger loop endings that force rewatches
+  - HuggingFace Inference API support (Gemma / any model) — no GPU needed
+  - Falls back to Gemini if HuggingFace fails (or vice versa)
+
+.env config:
+  AI_PROVIDER=gemini          # "gemini" (default) or "huggingface"
+  HF_TOKEN=hf_xxxxxxxx       # HuggingFace access token
+  HF_MODEL=google/gemma-3-27b-it  # Any HF model with chat support
+"""
+
 import os
 import sys
 import re
@@ -5,7 +20,6 @@ import json
 import random
 from datetime import datetime
 from dotenv import load_dotenv
-from google import genai
 import PyPDF2
 
 # Trending tag injector (Phase 5) and analytics (Phase 6)
@@ -25,13 +39,126 @@ except ImportError:
 import time as _time
 
 load_dotenv()
-# API key is read automatically from GEMINI_API_KEY environment variable
-client = genai.Client()
-MODEL = "gemini-2.5-flash"
-FALLBACK_MODEL = "gemini-2.0-flash"
 
-# ── Core channel tags — always included, always valid, total ≤ 200 chars ──
-# These are prepended to every upload so at minimum these tags are always sent.
+# ── AI Provider Setup ────────────────────────────────────────────────
+AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini").strip().lower()
+
+# Gemini client
+_gemini_client = None
+try:
+    from google import genai
+    _gemini_client = genai.Client()
+except Exception:
+    pass
+
+GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_FALLBACK = "gemini-2.0-flash"
+
+# HuggingFace client
+_hf_client = None
+HF_MODEL = os.getenv("HF_MODEL", "google/gemma-3-27b-it")
+try:
+    from huggingface_hub import InferenceClient
+    hf_token = os.getenv("HF_TOKEN", "").strip()
+    if hf_token:
+        _hf_client = InferenceClient(token=hf_token)
+except Exception:
+    pass
+
+
+def ask_ai(prompt, max_tokens=8192):
+    """
+    Route to the configured AI provider.
+    Falls back to the other provider if the primary one fails.
+    """
+    providers = []
+    if AI_PROVIDER == "huggingface" and _hf_client:
+        providers = [("huggingface", _ask_huggingface)]
+        if _gemini_client:
+            providers.append(("gemini", _ask_gemini))
+    else:
+        if _gemini_client:
+            providers = [("gemini", _ask_gemini)]
+        if _hf_client:
+            providers.append(("huggingface", _ask_huggingface))
+
+    if not providers:
+        raise RuntimeError("No AI provider available. Set GEMINI_API_KEY or HF_TOKEN in .env")
+
+    for name, fn in providers:
+        try:
+            print(f"  Using AI provider: {name}")
+            return fn(prompt, max_tokens)
+        except Exception as e:
+            print(f"  {name} failed: {e}")
+            if name != providers[-1][0]:
+                print(f"  Falling back to next provider...")
+            else:
+                raise
+
+
+def _ask_gemini(prompt, max_tokens=8192):
+    """Call Gemini with retry + fallback model."""
+    for attempt in range(4):
+        model = GEMINI_MODEL if attempt < 3 else GEMINI_FALLBACK
+        try:
+            if attempt > 0:
+                wait = min(2 ** attempt * 5, 60)
+                print(f"  Retry {attempt}/3 — waiting {wait}s... (model: {model})")
+                _time.sleep(wait)
+            response = _gemini_client.models.generate_content(model=model, contents=prompt)
+            text = response.text.strip()
+            if "```json" in text:
+                text = text.split("```json")[1].split("```")[0].strip()
+            elif "```" in text:
+                text = text.split("```")[1].split("```")[0].strip()
+            if attempt == 3:
+                print(f"  Fallback model ({GEMINI_FALLBACK}) succeeded!")
+            return text
+        except Exception as e:
+            err = str(e).lower()
+            if any(k in err for k in ["429", "overloaded", "resource", "quota", "rate", "unavailable", "503", "500"]):
+                if attempt < 3:
+                    print(f"  Gemini overloaded — will retry...")
+                    continue
+            raise
+
+
+def _ask_huggingface(prompt, max_tokens=8192):
+    """Call HuggingFace Inference API with the configured model."""
+    print(f"  HuggingFace model: {HF_MODEL}")
+
+    for attempt in range(3):
+        try:
+            if attempt > 0:
+                wait = 10 * attempt
+                print(f"  Retry {attempt}/2 — waiting {wait}s...")
+                _time.sleep(wait)
+
+            response = _hf_client.chat_completion(
+                model=HF_MODEL,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=max_tokens,
+            )
+            text = response.choices[0].message.content.strip()
+
+            # Extract JSON from code blocks if present
+            if "```json" in text:
+                text = text.split("```json")[1].split("```")[0].strip()
+            elif "```" in text:
+                text = text.split("```")[1].split("```")[0].strip()
+
+            return text
+
+        except Exception as e:
+            err = str(e).lower()
+            if any(k in err for k in ["429", "overloaded", "rate", "503", "500"]):
+                if attempt < 2:
+                    continue
+            raise
+
+
+# ── Core channel tags ────────────────────────────────────────────────
 CORE_TAGS = [
     "shorts", "youtubeshorts", "motivation", "mindset", "discipline",
     "selfimprovement", "success", "mentalstrength", "habits", "growthmindset",
@@ -39,7 +166,6 @@ CORE_TAGS = [
     "dailymotivation", "successmindset", "productivity", "selfhelp", "inspiration",
 ]
 
-# ── Fallback hashtag block appended to description if AI omits it ──
 FALLBACK_HASHTAGS = (
     "#Shorts #YouTubeShorts #motivation #mindset #selfimprovement "
     "#discipline #success #mentalstrength #habits #growthmindset "
@@ -47,8 +173,6 @@ FALLBACK_HASHTAGS = (
 )
 
 # ── Amazon Affiliate Links ──────────────────────────────────────────
-# Map book filenames (lowercase, without .pdf) to affiliate URLs.
-# Replace the placeholder URLs with your actual Amazon affiliate links.
 AFFILIATE_LINKS = {
     "atomic habits":      "https://amzn.to/REPLACE_atomic_habits",
     "cant hurt me":       "https://amzn.to/REPLACE_cant_hurt_me",
@@ -70,6 +194,7 @@ RECOMMENDED_BOOKS = [
     ("The Psychology of Money — Morgan Housel", "https://amzn.to/REPLACE_psych_money"),
 ]
 
+
 def get_book_page():
     books_dir = "books"
     if not os.path.exists(books_dir):
@@ -81,7 +206,6 @@ def get_book_page():
     book_files = sorted([f for f in os.listdir(books_dir) if f.endswith(".pdf")])
     if not book_files:
         print(f"  [!] No .pdf files found in {books_dir}/.")
-        print(f"  Please place a book (.pdf format) inside {books_dir}/ and run again.")
         sys.exit(1)
 
     progress_file = os.path.join(books_dir, "progress.json")
@@ -99,106 +223,51 @@ def get_book_page():
         progress["end_page"] = -1
 
     book_path = os.path.join(books_dir, current_book)
-    
     start_page = progress.get("current_page", 0)
     user_end_page = progress.get("end_page", -1)
     page_text = ""
-    
+
     try:
         with open(book_path, "rb") as f:
             reader = PyPDF2.PdfReader(f)
             total_pages = len(reader.pages)
-            
             end_limit = total_pages
             if user_end_page != -1 and user_end_page < total_pages:
                 end_limit = user_end_page
-            
+
             if start_page >= end_limit:
-                print(f"  [!] Reached the defined end page ({end_limit}) of {current_book}.")
-                print(f"  Please remove {current_book} from {books_dir}/ to start the next book.")
+                print(f"  [!] Reached end page ({end_limit}) of {current_book}.")
                 sys.exit(1)
-                
-            # Extract 2 pages per day
+
             if start_page < end_limit:
                 extracted_text = reader.pages[start_page].extract_text()
                 if extracted_text:
                     page_text += extracted_text + "\n\n"
-                
             if start_page + 1 < end_limit:
                 extracted_text2 = reader.pages[start_page + 1].extract_text()
                 if extracted_text2:
                     page_text += extracted_text2 + "\n\n"
-                    
-            next_page = start_page + 2
-            if next_page > end_limit:
-                next_page = end_limit
-                
+            next_page = min(start_page + 2, end_limit)
     except Exception as e:
         print(f"  [!] Error reading {current_book}: {e}")
         sys.exit(1)
 
     progress["current_page"] = next_page
-
     with open(progress_file, "w", encoding="utf-8") as f:
         json.dump(progress, f, indent=2)
 
-    print(f"  [+] Reading from {current_book} (PDF Pages: {start_page} and {min(start_page + 1, end_limit - 1)})")
-    
+    print(f"  [+] Reading from {current_book} (Pages: {start_page}-{min(start_page + 1, end_limit - 1)})")
     if not page_text.strip():
         return get_book_page()
-
     return page_text.strip(), current_book
 
-def ask_gemini(prompt, max_tokens=8192):
-    """
-    Call Gemini with automatic retry + fallback model.
-    Retries 3 times with exponential backoff on overload/rate-limit errors.
-    Falls back to FALLBACK_MODEL if primary MODEL keeps failing.
-    """
-    for attempt in range(4):  # 3 retries on primary + 1 on fallback
-        model = MODEL if attempt < 3 else FALLBACK_MODEL
-        try:
-            if attempt > 0:
-                wait = min(2 ** attempt * 5, 60)  # 10s, 20s, 40s
-                print(f"  Retry {attempt}/3 — waiting {wait}s... (model: {model})")
-                _time.sleep(wait)
-            response = client.models.generate_content(model=model, contents=prompt)
-            text = response.text.strip()
-            if "```json" in text:
-                text = text.split("```json")[1].split("```")[0].strip()
-            elif "```" in text:
-                text = text.split("```")[1].split("```")[0].strip()
-            if attempt == 3:
-                print(f"  Fallback model ({FALLBACK_MODEL}) succeeded!")
-            return text
-        except Exception as e:
-            err = str(e).lower()
-            if any(k in err for k in ["429", "overloaded", "resource", "quota", "rate", "unavailable", "503", "500"]):
-                if attempt < 3:
-                    print(f"  Gemini overloaded — will retry... ({e})")
-                    continue
-                else:
-                    print(f"  Fallback model also failed — {e}")
-                    raise
-            else:
-                raise
 
 def sanitize_json_text(text):
-    """
-    Fix literal newlines and control characters inside JSON string values.
-    Gemini sometimes outputs real newline characters inside description/script
-    fields instead of escaped \\n — this breaks json.loads with
-    'Invalid control character' errors.
-
-    Walks the raw text character by character, tracking whether we're
-    inside a JSON string, and escapes any bare control characters found there.
-    """
     result = []
     in_string = False
     i = 0
     while i < len(text):
         ch = text[i]
-        # Toggle in_string on unescaped double-quotes
         if ch == '"' and (i == 0 or text[i - 1] != '\\'):
             in_string = not in_string
             result.append(ch)
@@ -210,7 +279,6 @@ def sanitize_json_text(text):
             elif ch == '\t':
                 result.append('\\t')
             elif ord(ch) < 0x20:
-                # Drop other control characters — they're never valid in JSON strings
                 pass
             else:
                 result.append(ch)
@@ -221,7 +289,6 @@ def sanitize_json_text(text):
 
 
 def parse_json_safe(text, retries_left=2, prompt=None):
-    # Sanitize control characters before first parse attempt
     text = sanitize_json_text(text)
     try:
         return json.loads(text)
@@ -242,15 +309,12 @@ def parse_json_safe(text, retries_left=2, prompt=None):
             pass
         if retries_left > 0 and prompt:
             print(f"  Retrying... ({retries_left} attempts left)")
-            new_text = ask_gemini(prompt)
+            new_text = ask_ai(prompt)
             return parse_json_safe(new_text, retries_left - 1, prompt)
         raise ValueError(f"Failed to parse JSON. Raw:\n{text[:500]}")
 
+
 def _build_performance_context():
-    """
-    Pull top-performing title patterns from analytics log and format
-    them as context for the Gemini prompt (A/B feedback loop).
-    """
     if not _ANALYTICS_AVAILABLE:
         return ""
     try:
@@ -258,45 +322,31 @@ def _build_performance_context():
         if not patterns:
             return ""
         lines = ["━━━━━━━━━━━━━━━━━━━━━━━━",
-                 "PERFORMANCE INTELLIGENCE (A/B data from your channel — use these patterns MORE):"]
+                 "PERFORMANCE INTELLIGENCE (A/B data — use winning patterns MORE):"]
         for p in patterns:
             lines.append(
-                f"  ✅ Pattern [{p['pattern']}] — avg {p['avg_views']:,} views | "
-                f"Best title: \"{p['best_title'][:60]}\""
+                f"  Pattern [{p['pattern']}] — avg {p['avg_views']:,} views | "
+                f"Best: \"{p['best_title'][:60]}\""
             )
-        lines.append("Use the winning patterns above more often. Avoid patterns NOT listed here.")
+        lines.append("Use winning patterns above. Avoid patterns NOT listed here.")
         return "\n".join(lines) + "\n"
     except Exception:
         return ""
 
 
 def sanitize_tags(tags):
-    """
-    Sanitize tags to meet YouTube Data API requirements.
-    Called before saving seo_data.json so tags are always clean.
-
-    Rules enforced:
-    - Strip leading # (YouTube tags must NOT start with #)
-    - Only allow: letters, digits, spaces, hyphens, apostrophes
-    - Remove empty tags after cleaning
-    - Truncate single-word tags to 30 chars, multi-word to 100 chars
-    - Total combined length must stay under 500 chars
-    """
     cleaned = []
     for tag in tags:
         tag = str(tag).strip().lstrip('#').strip()
         if not tag:
             continue
-        # Keep only safe characters: letters, digits, spaces, hyphens
         tag = re.sub(r"[^a-zA-Z0-9 \-]", '', tag).strip()
-        # Collapse multiple spaces into one
         tag = re.sub(r' +', ' ', tag)
         if not tag:
             continue
         tag = tag[:100] if ' ' in tag else tag[:30]
         cleaned.append(tag)
 
-    # Deduplicate (case-insensitive) while preserving order
     seen = set()
     deduped = []
     for tag in cleaned:
@@ -305,21 +355,18 @@ def sanitize_tags(tags):
             seen.add(key)
             deduped.append(tag)
 
-    # Enforce 500-char total limit
     result = []
     total = 0
     for tag in deduped:
-        cost = len(tag) + (1 if result else 0)  # comma before every tag except first
+        cost = len(tag) + (1 if result else 0)
         if total + cost > 500:
             break
         result.append(tag)
         total += cost
-
     return result
 
 
 def get_book_affiliate_link(book_name):
-    """Find the affiliate link for the current book."""
     book_lower = os.path.splitext(book_name)[0].lower()
     for key, url in AFFILIATE_LINKS.items():
         if key in book_lower or book_lower in key:
@@ -328,23 +375,19 @@ def get_book_affiliate_link(book_name):
 
 
 def build_affiliate_section(book_name):
-    """Build the affiliate links section for the description."""
     book_title, book_url = get_book_affiliate_link(book_name)
     lines = []
-
     if book_url:
         lines.append(f"\n\n📚 Book from this video:")
         lines.append(f"👉 {book_title} — {book_url}")
-
     lines.append(f"\n📚 Books that changed my life:")
     for title, url in RECOMMENDED_BOOKS:
         lines.append(f"👉 {title} — {url}")
-
     return "\n".join(lines)
 
 
+# ── Description styles (randomized per run) ──────────────────────────
 DESCRIPTION_STYLES = [
-    # Style A — Full structured (classic)
     """Write a natural, unique description. Do NOT follow a rigid template. Include:
 - A compelling opening line that hooks the reader (different every time)
 - 2-3 sentences about what the viewer will learn or feel
@@ -352,14 +395,12 @@ DESCRIPTION_STYLES = [
 - 5-8 hashtags at the end (start with #Shorts, rest are niche-specific, VARY them each time)
 Do NOT use emoji-heavy CTA blocks. Write it like a real person, not a bot.""",
 
-    # Style B — Minimal (short and punchy)
     """Write a SHORT description (3-5 lines max). No fluff. Include:
 - One powerful sentence about the video's core message
 - One line of value or a bold claim
 - 5-6 hashtags at the end (start with #Shorts)
 Do NOT add subscribe/like/save CTAs. Keep it clean and minimal.""",
 
-    # Style C — Story-driven
     """Write the description as a mini-story or thought. Include:
 - Start with a question or a "what if" scenario
 - 2-3 lines that build curiosity about the video
@@ -367,7 +408,6 @@ Do NOT add subscribe/like/save CTAs. Keep it clean and minimal.""",
 - 6-8 hashtags at the end (start with #Shorts)
 No rigid format. Make it feel like a journal entry or a tweet thread.""",
 
-    # Style D — SEO-focused conversational
     """Write a natural description optimized for YouTube search. Include:
 - Open with a searchable keyword phrase woven into a natural sentence
 - 2-3 sentences of value using different keyword variations
@@ -377,75 +417,37 @@ Make it feel like a human wrote it, not a template.""",
 ]
 
 
-def _load_competitor_insights():
-    """Load competitor analysis insights if available."""
-    insights_file = "output/competitor_insights.json"
-    if not os.path.exists(insights_file):
-        return ""
-    try:
-        with open(insights_file, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        insights = data.get("insights", {})
-        if not insights:
-            return ""
-
-        parts = []
-        parts.append("━━━━━━━━━━━━━━━━━━━━━━━━")
-        parts.append("COMPETITOR INSIGHTS (from recent top-performing Shorts in your niche):")
-        parts.append("━━━━━━━━━━━━━━━━━━━━━━━━")
-
-        if insights.get("title_patterns"):
-            parts.append("Title formulas that are working RIGHT NOW:")
-            for p in insights["title_patterns"][:5]:
-                parts.append(f"  - {p}")
-
-        if insights.get("hook_words"):
-            parts.append(f"Power words in top titles: {', '.join(insights['hook_words'][:8])}")
-
-        if insights.get("trending_topics"):
-            parts.append("Trending topics getting views this week:")
-            for t in insights["trending_topics"][:5]:
-                parts.append(f"  - {t}")
-
-        if insights.get("avoid"):
-            parts.append("Patterns that UNDERPERFORM (avoid these):")
-            for a in insights["avoid"][:3]:
-                parts.append(f"  x {a}")
-
-        parts.append("Use these insights to craft titles and hooks that match current trends.\n")
-        return "\n".join(parts)
-    except Exception:
-        return ""
-
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# V2 RETENTION-OPTIMIZED PROMPT
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 def write_shorts_scripts(book_page_text, book_name):
     performance_context = _build_performance_context()
-    competitor_context = _load_competitor_insights()
 
-    # Randomize prompt elements to avoid template detection
     desc_style = random.choice(DESCRIPTION_STYLES)
     tag_count = random.randint(8, 12)
     style_idx = DESCRIPTION_STYLES.index(desc_style)
     style_names = ["structured", "minimal", "story-driven", "SEO-conversational"]
     print(f"  Prompt style: {style_names[style_idx]} | Tags: {tag_count}")
 
-    prompt = f"""You are an elite YouTube Shorts viral content strategist. You understand the algorithm deeply: completion rate is EVERYTHING. A 15-second Short with 95% retention will outperform a 50-second Short with 40% retention every single time.
+    prompt = f"""You are an elite YouTube Shorts viral content strategist specializing in RETENTION.
+Your #1 metric is COMPLETION RATE. A 15-second Short with 95% retention beats a 50-second Short with 40% retention. Every word, every second must EARN the viewer's attention.
 
-{performance_context}{competitor_context}INPUT BOOK PAGE TEXT (use as INSPIRATION ONLY — do NOT copy, quote, or closely paraphrase):
+{performance_context}INPUT BOOK PAGE TEXT (use as INSPIRATION ONLY — do NOT copy, quote, or closely paraphrase):
 {book_page_text}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
-COPYRIGHT SAFETY (MANDATORY — CHANNEL SURVIVAL DEPENDS ON THIS):
+COPYRIGHT SAFETY (MANDATORY — CHANNEL SURVIVAL):
 ━━━━━━━━━━━━━━━━━━━━━━━━
 - NEVER copy sentences or phrases from the book. Transform every idea into YOUR OWN words.
 - NEVER mention the book name, author name, or any direct quotes.
-- Take the CORE CONCEPT from the book and add YOUR OWN:
+- Take the CORE CONCEPT and add YOUR OWN:
   → Real-world examples and scenarios (invent them — "Picture your friend who...")
   → Personal opinions and hot takes ("Here's what nobody realizes about this...")
   → Practical action steps the book doesn't mention
   → Connections to modern life, psychology studies, or pop culture
   → Contrarian angles — challenge or expand on the book's ideas
-- The final script should feel like ORIGINAL ADVICE that was INSPIRED by a concept, NOT a book summary.
+- The final script must feel like ORIGINAL ADVICE inspired by a concept, NOT a book summary.
 - A viewer should NEVER be able to tell this came from a specific book.
 
 MISSION: Transform this into 2 viral YouTube Shorts with ORIGINAL commentary.
@@ -453,14 +455,15 @@ MISSION: Transform this into 2 viral YouTube Shorts with ORIGINAL commentary.
 - Short 2: DIRECT ADVICE / "HARD TRUTH" angle — add your own unique take
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
-TITLE RULES (CRITICAL FOR ALGORITHM):
+TITLE RULES (CRITICAL FOR CTR):
 ━━━━━━━━━━━━━━━━━━━━━━━━
 - NEVER include the book name.
-- ALWAYS end the title with #Shorts.
+- ALWAYS end with #Shorts.
 - Keep under 60 characters.
-- The title must feel PERSONAL — use "You" or "Your" when possible.
+- Must feel PERSONAL — use "You" or "Your" when possible.
 - Create a SPECIFIC curiosity gap — not vague motivation.
-- NEVER use these overused titles (they are BANNED):
+
+BANNED TITLES (overused — YouTube suppresses these):
   ❌ "I Wish Someone Had Told Me This Sooner"
   ❌ "The Brutal Truth About Why You're Still Losing"
   ❌ "The Lesson That Actually Changed My Life"
@@ -468,49 +471,83 @@ TITLE RULES (CRITICAL FOR ALGORITHM):
   ❌ "The Mindset Shift That Changes Everything"
   ❌ "99% of People Get This Completely Wrong"
 
-- INSTEAD use patterns that feel SPECIFIC and PERSONAL:
+USE THESE PATTERNS INSTEAD (SPECIFIC + PERSONAL):
   ✅ "You Do THIS Every Morning And It's Destroying You #Shorts"
   ✅ "Your Brain Is Lying to You Right Now #Shorts"
   ✅ "Delete This One Habit Or Stay Broke Forever #Shorts"
   ✅ "3 Seconds. That's All You Get. #Shorts"
   ✅ "You're Not Lazy. You're Doing This Wrong. #Shorts"
-  ✅ "The 5AM Lie Nobody Talks About #Shorts"
   ✅ "Rich People Never Say This Word #Shorts"
-  ✅ "If You Do This Before Bed You'll Win #Shorts"
   ✅ "Your Phone Is Eating Your Future #Shorts"
   ✅ "This 10-Second Test Reveals Everything #Shorts"
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
-SCRIPT RULES (MOST IMPORTANT — READ 3 TIMES):
+SCRIPT RULES — RETENTION ENGINE (V2):
 ━━━━━━━━━━━━━━━━━━━━━━━━
-LENGTH: 15-25 seconds of speaking content. That's 40-70 words TOTAL. NOT 120 words. NOT 100 words. MAXIMUM 70 WORDS.
-Why? Short = higher completion rate = YouTube pushes to millions.
+LENGTH: 15-25 seconds speaking. That's 40-70 words TOTAL. MAXIMUM 70 WORDS.
+Short = higher completion = YouTube pushes to millions.
 
-STRUCTURE — Every script MUST follow this exact flow:
-1. HOOK (first sentence, 1-2 seconds): Pattern interrupt. Make them STOP.
-   - Start with "You" or a direct command — never "Did you know" or "Here's the thing"
-   - Must feel like you're calling them out personally
-   - Examples: "Stop. You did this today and didn't even realize it."
-              "You're reading this because something isn't working."
-              "Your alarm went off this morning. What you did next decided everything."
+STRUCTURE — Every script MUST follow this EXACT flow:
 
-2. BODY (10-18 seconds): ONE single powerful idea. Not 3 ideas. Not a list. ONE.
+1. HOOK (first 1-2 seconds) — THE MOST IMPORTANT PART.
+   80% of viewers decide to stay or scroll in the first 2 seconds.
+   Your hook must be a SCROLL STOPPER.
+
+   HOOK RULES:
+   - OPEN WITH A SHOCK, ACCUSATION, OR BOLD CLAIM — never ease in
+   - Start with "You" or a direct command
+   - Include an OPEN LOOP — hint something important is coming but DON'T reveal it yet
+   - Use specific numbers or timeframes — "3 seconds", "90%", "every single morning"
+   - Create FOMO — make them feel they'll LOSE something if they scroll away
+
+   PROVEN HOOK FORMULAS (use as templates, never copy exactly):
+   ✅ "You lost 3 hours today and didn't even notice."
+   ✅ "Stop. The thing you just did 5 minutes ago is the reason you're stuck."
+   ✅ "Your brain made a decision this morning that ruined your entire day."
+   ✅ "90% of people will scroll past this. The 10% who stay will understand."
+   ✅ "There's one word destroying your life and you say it every single day."
+
+   BANNED HOOK PATTERNS (these KILL retention):
+   ❌ Starting with a question ("Did you know...?", "What if I told you...?")
+   ❌ Starting with greetings ("Hey", "Alright guys", "So", "Welcome")
+   ❌ Starting with "Here's the thing" or "The truth is"
+   ❌ Generic statements without specifics ("Most people fail because...")
+   ❌ Quoting someone ("As [person] once said...")
+   ❌ "In this video" or "Today I want to talk about"
+
+2. BODY (10-18 seconds) — ONE single powerful idea. Not 3 ideas. Not a list. ONE.
    - Short punchy sentences. 5-10 words each.
    - Every sentence must create tension or reveal
-   - Use "you" and "your" constantly — make it feel personal
+   - Use "you" and "your" constantly — personal and direct
    - Phrase-by-phrase rhythm: statement. pause. reveal. pause. impact.
+   - CLOSE THE OPEN LOOP from the hook — deliver the payoff here
+   - Add one UNEXPECTED TWIST the viewer won't see coming
+   - Build towards the ending — each sentence raises the stakes
 
-3. LOOP ENDING (last sentence, 2-3 seconds): The ending MUST connect back to the hook.
-   This makes people rewatch. Rewatches = YouTube pushes harder.
-   - If hook is "You do THIS every morning..." → end with "...and tomorrow morning, you'll remember this."
-   - If hook is "Your brain is lying..." → end with "...and now your brain can't lie to you anymore."
-   - The viewer should feel the urge to watch again.
+3. LOOP ENDING (last sentence, 2-3 seconds) — Forces REWATCHES.
+   Rewatches = YouTube pushes harder = more views. This is the secret weapon.
+
+   LOOP ENDING RULES:
+   - CALLBACK the exact phrase or image from the hook
+   - The ending must make the viewer feel INCOMPLETE — like they need to rewatch
+   - Create a circular moment: the last words should echo the first words
+
+   EXAMPLES:
+   - If hook is "You lost 3 hours today..." → end: "...and tomorrow, you'll lose 3 more. Unless you stop right now."
+   - If hook is "Your brain made a decision..." → end: "...and your brain is about to make the same decision again."
+   - If hook is "There's one word destroying your life..." → end: "...and you almost said it again just now."
+
+   BANNED ENDINGS (these kill loop rate):
+   ❌ "Subscribe for more" / "Follow for more" / "Like and share"
+   ❌ "Let me know in the comments"
+   ❌ "Stay tuned for part 2"
+   ❌ Any generic CTA — the LOOP IS the CTA
 
 WRITING STYLE:
 - American English. Conversational. Raw.
 - NO filler words. NO "basically", "actually", "honestly", "look"
 - NO generic motivation. Be SPECIFIC. Use numbers, scenarios, actions.
-- Write like you're texting a friend a hard truth, not giving a TED talk.
+- Write like you're texting a friend a hard truth at 2 AM.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
 DESCRIPTION RULES:
@@ -533,9 +570,9 @@ Respond in this EXACT JSON format — no extra text outside the JSON:
             "angle_type": "emotional storytelling",
             "youtube_title": "SPECIFIC personal title under 60 chars ending with #Shorts",
             "description": "Full description following structure above",
-            "hook": "First punchy line — pattern interrupt — uses YOU",
-            "script": "Full 40-70 word script. SHORT. Every word earns its place.",
-            "cta": "One short line that triggers rewatch or follow",
+            "hook": "First punchy line — scroll stopper with OPEN LOOP — uses YOU",
+            "script": "Full 40-70 word script. Hook → Body (ONE idea + twist) → Loop ending. Every word earns its place.",
+            "cta": "Loop ending line that callbacks the hook and forces rewatch",
             "tags": ["shorts", "youtubeshorts", "... {tag_count} total unique tags"],
             "category_id": "22"
         }},
@@ -543,9 +580,9 @@ Respond in this EXACT JSON format — no extra text outside the JSON:
             "angle_type": "direct advice",
             "youtube_title": "SPECIFIC personal title under 60 chars ending with #Shorts",
             "description": "Full description following structure above",
-            "hook": "First punchy line — pattern interrupt — uses YOU",
-            "script": "Full 40-70 word script. SHORT. Every word earns its place.",
-            "cta": "One short line that triggers rewatch or follow",
+            "hook": "First punchy line — scroll stopper with OPEN LOOP — uses YOU",
+            "script": "Full 40-70 word script. Hook → Body (ONE idea + twist) → Loop ending. Every word earns its place.",
+            "cta": "Loop ending line that callbacks the hook and forces rewatch",
             "tags": ["shorts", "youtubeshorts", "... {tag_count} total unique tags"],
             "category_id": "27"
         }}
@@ -553,13 +590,16 @@ Respond in this EXACT JSON format — no extra text outside the JSON:
 }}
 Only JSON. No extra text."""
 
-    text = ask_gemini(prompt)
+    text = ask_ai(prompt)
     return parse_json_safe(text, retries_left=2, prompt=prompt)
 
+
 def main():
+    provider_label = "HuggingFace" if AI_PROVIDER == "huggingface" else "Gemini"
+    model_label = HF_MODEL if AI_PROVIDER == "huggingface" else GEMINI_MODEL
     print("=" * 50)
-    print("  NextLevelMind Shorts Generator — Gemini")
-    print(f"  Model: {MODEL}")
+    print("  NextLevelMind Shorts Generator — V2 Retention")
+    print(f"  AI Provider: {provider_label} ({model_label})")
     print("=" * 50)
 
     video_num = os.environ.get("VIDEO_NUMBER", "1")
@@ -567,7 +607,6 @@ def main():
 
     print(f"\n  Video        : #{video_num}")
 
-    # Read current book name from progress for affiliate links
     progress_file = os.path.join("books", "progress.json")
     if os.path.exists(progress_file):
         with open(progress_file, "r", encoding="utf-8") as f:
@@ -596,12 +635,11 @@ def main():
         short_idx = 1
 
     my_short = script_data["shorts"][short_idx]
-    
+
     print(f"  Angle    : {my_short['angle_type']}")
     print(f"  YT Title : {my_short['youtube_title']}")
 
     print("\n[2/3] Saving text sections...")
-    # Clear old sections to prevent stale text leaking into subtitles
     if os.path.exists("output/sections"):
         import shutil
         shutil.rmtree("output/sections")
@@ -613,16 +651,13 @@ def main():
     with open("output/sections/03_cta.txt", "w", encoding="utf-8") as f:
         f.write(my_short["cta"])
 
-    # Build tag list: CORE_TAGS first (guaranteed valid), then AI tags, then trending
-    tags = list(CORE_TAGS)  # start with always-valid core tags
+    tags = list(CORE_TAGS)
     existing_lower = {t.lower() for t in tags}
-
     for t in my_short.get("tags", []):
         if t.lower() not in existing_lower:
             tags.append(t)
             existing_lower.add(t.lower())
 
-    # Inject trending tags (Phase 5) — mix Google Trends keywords into tags
     if _TRENDING_AVAILABLE:
         print("\n  Fetching trending tags from Google Trends...")
         trending = get_trending_tags(category="general")
@@ -631,25 +666,21 @@ def main():
                 tags.append(t)
                 existing_lower.add(t.lower())
 
-    # Ensure description always ends with a hashtag block
     description = my_short.get("description", "")
     if "#Shorts" not in description and "#shorts" not in description:
         description = description.rstrip() + "\n\n" + FALLBACK_HASHTAGS
-        print("  [!] AI omitted hashtags — fallback block appended to description")
+        print("  [!] AI omitted hashtags — fallback block appended")
 
-    # Append Amazon Affiliate links to description
     try:
         affiliate_section = build_affiliate_section(current_book_name)
         description = description.rstrip() + "\n" + affiliate_section
-        print("  [+] Affiliate links appended to description")
+        print("  [+] Affiliate links appended")
     except Exception:
         pass
 
-    # Sanitize tags before saving — strip #, special chars, enforce 500-char limit
     tags = sanitize_tags(tags)
     print(f"  Tags     : {len(tags)} tags ({sum(len(t) for t in tags)} chars)")
 
-    # Update seo_data.json
     seo_data = {
         "youtube_title": my_short["youtube_title"],
         "description": description,
@@ -669,6 +700,7 @@ def main():
     print("\n[3/3] Done!")
     print("=" * 50)
     print("\n  Next step: Run 03_voiceover.py")
+
 
 if __name__ == "__main__":
     main()

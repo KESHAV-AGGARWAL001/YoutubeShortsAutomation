@@ -3,9 +3,17 @@ import sys
 import os
 import shutil
 import datetime
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Pick script version based on SCRIPT_VERSION env var
+_script_version = os.getenv("SCRIPT_VERSION", "v1").strip().lower()
+_write_script = "02_write_script_v2.py" if _script_version == "v2" else "02_write_script.py"
+_script_label = "Retention-optimized script (V2)" if _script_version == "v2" else "Finding topic + writing script (Gemini)"
 
 STEPS = [
-    ("02_write_script.py",  "Finding topic + writing script (Gemini)"),
+    (_write_script,         _script_label),
     ("03_voiceover.py",     "Generating voiceover (Edge TTS)"),
     ("04_get_footage.py",   "Selecting footage (2 random categories)"),
     ("05_make_video.py",    "Assembling video (FFmpeg)"),
