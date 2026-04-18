@@ -9,6 +9,8 @@ from server.services.state import PipelineState, PROJECT_ROOT
 from server.services.script_service import generate_script_from_book, generate_script_from_custom, _load_current_script
 from server.models.schemas import ScriptData, SeoData
 
+cancel_event = threading.Event()
+
 
 class LogCapture(io.TextIOBase):
     """Captures stdout writes and feeds them to PipelineState logs."""
@@ -64,12 +66,12 @@ def _run_script_module(module_name: str, state: PipelineState):
         os.chdir(old_cwd)
 
 
-async def run_step(step_id: str, state: PipelineState, is_full_pipeline: bool = False, **kwargs):
-    """Run a single pipeline step.
+class CancelledError(Exception):
+    pass
 
-    When called individually (is_full_pipeline=False), resets pipeline_status
-    to idle after completion so buttons remain clickable.
-    """
+
+async def run_step(step_id: str, state: PipelineState, is_full_pipeline: bool = False, **kwargs):
+    """Run a single pipeline step."""
     module_map = {
         "generate_voiceover": "03_voiceover",
         "select_footage": "04_get_footage",
@@ -77,6 +79,9 @@ async def run_step(step_id: str, state: PipelineState, is_full_pipeline: bool = 
         "generate_thumbnail": "06_thumbnail",
         "upload": "07_upload",
     }
+
+    if is_full_pipeline and cancel_event.is_set():
+        raise CancelledError("Pipeline cancelled")
 
     state.set_step_status(step_id, "running")
     state.add_log(f"Starting: {step_id}")
@@ -104,6 +109,8 @@ async def run_step(step_id: str, state: PipelineState, is_full_pipeline: bool = 
 
         elif step_id == "assemble_video":
             await asyncio.to_thread(_run_script_module, "04_get_footage", state)
+            if is_full_pipeline and cancel_event.is_set():
+                raise CancelledError("Pipeline cancelled")
             await asyncio.to_thread(_run_script_module, "05_make_video", state)
             video_path = os.path.join(PROJECT_ROOT, "output", "final_video.mp4")
             if os.path.exists(video_path):
@@ -153,6 +160,9 @@ async def run_step(step_id: str, state: PipelineState, is_full_pipeline: bool = 
         else:
             raise ValueError(f"Unknown step: {step_id}")
 
+    except CancelledError:
+        state.set_step_status(step_id, "error", "Cancelled")
+        raise
     except Exception as e:
         state.set_step_status(step_id, "error", str(e))
         state.add_log(f"ERROR in {step_id}: {e}")
@@ -163,6 +173,7 @@ async def run_step(step_id: str, state: PipelineState, is_full_pipeline: bool = 
 
 async def run_full_pipeline(state: PipelineState, **kwargs):
     """Run all pipeline steps sequentially."""
+    cancel_event.clear()
     state.reset()
     state.set_pipeline_status("running")
 
@@ -185,8 +196,17 @@ async def run_full_pipeline(state: PipelineState, **kwargs):
         }))
 
     for step_id, step_kwargs in step_configs:
+        if cancel_event.is_set():
+            state.set_pipeline_status("idle")
+            state.add_log("Pipeline cancelled by user")
+            return
+
         try:
             await run_step(step_id, state, is_full_pipeline=True, **step_kwargs)
+        except CancelledError:
+            state.set_pipeline_status("idle")
+            state.add_log("Pipeline cancelled by user")
+            return
         except Exception as e:
             state.set_pipeline_status("error")
             state.add_log(f"Pipeline stopped at {step_id}: {e}")

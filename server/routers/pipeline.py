@@ -1,10 +1,10 @@
 import json
 import asyncio
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from server.models.schemas import RunPipelineRequest
 from server.services.state import pipeline_state
-from server.services.pipeline_runner import run_full_pipeline
+from server.services.pipeline_runner import run_full_pipeline, cancel_event
 
 router = APIRouter()
 
@@ -52,6 +52,8 @@ async def run_pipeline(req: RunPipelineRequest):
     if pipeline_state.pipeline_status == "running":
         return {"status": "already_running", "message": "Pipeline is already running"}
 
+    cancel_event.clear()
+
     _pipeline_task = asyncio.create_task(
         run_full_pipeline(
             pipeline_state,
@@ -70,15 +72,23 @@ async def run_pipeline(req: RunPipelineRequest):
 @router.post("/cancel-pipeline")
 async def cancel_pipeline():
     global _pipeline_task
+
+    if pipeline_state.pipeline_status != "running":
+        return {"status": "not_running"}
+
+    cancel_event.set()
+
+    pipeline_state.set_pipeline_status("idle")
+    pipeline_state.add_log("Pipeline cancelled by user")
+
     if _pipeline_task and not _pipeline_task.done():
         _pipeline_task.cancel()
-        pipeline_state.set_pipeline_status("idle")
-        pipeline_state.add_log("Pipeline cancelled by user")
-        return {"status": "cancelled"}
-    return {"status": "not_running"}
+
+    return {"status": "cancelled"}
 
 
 @router.post("/reset")
 async def reset_pipeline():
+    cancel_event.set()
     pipeline_state.reset()
     return {"status": "reset"}
