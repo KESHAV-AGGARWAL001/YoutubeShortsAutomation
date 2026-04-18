@@ -1,5 +1,5 @@
 import os
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from server.services.state import pipeline_state, PROJECT_ROOT
 from server.services.pipeline_runner import run_step
 
@@ -8,7 +8,10 @@ router = APIRouter()
 
 @router.post("/generate-video")
 async def generate_video():
-    result = await run_step("assemble_video", pipeline_state)
+    try:
+        await run_step("assemble_video", pipeline_state)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
     video_path = os.path.join(PROJECT_ROOT, "output", "final_video.mp4")
     duration = 0.0

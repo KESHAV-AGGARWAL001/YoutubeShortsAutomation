@@ -1,6 +1,5 @@
-import asyncio
-from fastapi import APIRouter
-from server.models.schemas import GenerateScriptRequest, UpdateScriptRequest, ScriptData, SeoData
+from fastapi import APIRouter, HTTPException
+from server.models.schemas import GenerateScriptRequest, UpdateScriptRequest
 from server.services.state import pipeline_state
 from server.services.script_service import save_script, _load_current_script
 from server.services.pipeline_runner import run_step
@@ -10,14 +9,18 @@ router = APIRouter()
 
 @router.post("/generate-script")
 async def generate_script(req: GenerateScriptRequest):
-    result = await run_step(
-        "generate_script",
-        pipeline_state,
-        source=req.source,
-        custom_content=req.custom_content,
-        custom_prompt=req.custom_prompt,
-        video_number=req.video_number,
-    )
+    try:
+        result = await run_step(
+            "generate_script",
+            pipeline_state,
+            source=req.source,
+            custom_content=req.custom_content,
+            custom_prompt=req.custom_prompt,
+            video_number=req.video_number,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
     script = result["script"]
     seo = result["seo_data"]
     return {

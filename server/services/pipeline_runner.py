@@ -64,8 +64,12 @@ def _run_script_module(module_name: str, state: PipelineState):
         os.chdir(old_cwd)
 
 
-async def run_step(step_id: str, state: PipelineState, **kwargs):
-    """Run a single pipeline step."""
+async def run_step(step_id: str, state: PipelineState, is_full_pipeline: bool = False, **kwargs):
+    """Run a single pipeline step.
+
+    When called individually (is_full_pipeline=False), resets pipeline_status
+    to idle after completion so buttons remain clickable.
+    """
     module_map = {
         "generate_voiceover": "03_voiceover",
         "select_footage": "04_get_footage",
@@ -94,6 +98,8 @@ async def run_step(step_id: str, state: PipelineState, **kwargs):
                 )
             state.set_script(script, seo)
             state.set_step_status(step_id, "completed")
+            if not is_full_pipeline:
+                state.set_pipeline_status("idle")
             return {"script": script, "seo_data": seo}
 
         elif step_id == "assemble_video":
@@ -104,6 +110,8 @@ async def run_step(step_id: str, state: PipelineState, **kwargs):
                 size_mb = os.path.getsize(video_path) / (1024 * 1024)
                 state.set_output_file("video", "final_video.mp4")
                 state.set_step_status(step_id, "completed")
+                if not is_full_pipeline:
+                    state.set_pipeline_status("idle")
                 return {"video_file": "final_video.mp4", "size_mb": round(size_mb, 1)}
             else:
                 raise RuntimeError("Video file not created")
@@ -119,6 +127,8 @@ async def run_step(step_id: str, state: PipelineState, **kwargs):
 
             await asyncio.to_thread(_run_script_module, "07_upload", state)
             state.set_step_status(step_id, "completed")
+            if not is_full_pipeline:
+                state.set_pipeline_status("idle")
             return {"status": "uploaded"}
 
         elif step_id in module_map:
@@ -131,11 +141,13 @@ async def run_step(step_id: str, state: PipelineState, **kwargs):
                     state.set_output_file("thumbnail", "thumbnail.jpg")
 
             if step_id == "generate_voiceover":
-                vo_path = os.path.join(PROJECT_ROOT, "output", "full_voiceover.mp3")
-                if os.path.exists(vo_path):
-                    state.set_output_file("voiceover", "full_voiceover.mp3")
+                vo_dir = os.path.join(PROJECT_ROOT, "output", "voiceovers")
+                if os.path.exists(vo_dir) and any(f.endswith(".mp3") for f in os.listdir(vo_dir)):
+                    state.set_output_file("voiceover", "voiceovers")
 
             state.set_step_status(step_id, "completed")
+            if not is_full_pipeline:
+                state.set_pipeline_status("idle")
             return {"status": "completed"}
 
         else:
@@ -144,6 +156,8 @@ async def run_step(step_id: str, state: PipelineState, **kwargs):
     except Exception as e:
         state.set_step_status(step_id, "error", str(e))
         state.add_log(f"ERROR in {step_id}: {e}")
+        if not is_full_pipeline:
+            state.set_pipeline_status("idle")
         raise
 
 
@@ -172,7 +186,7 @@ async def run_full_pipeline(state: PipelineState, **kwargs):
 
     for step_id, step_kwargs in step_configs:
         try:
-            await run_step(step_id, state, **step_kwargs)
+            await run_step(step_id, state, is_full_pipeline=True, **step_kwargs)
         except Exception as e:
             state.set_pipeline_status("error")
             state.add_log(f"Pipeline stopped at {step_id}: {e}")

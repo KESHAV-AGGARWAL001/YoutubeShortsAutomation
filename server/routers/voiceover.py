@@ -1,5 +1,5 @@
 import os
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from server.services.state import pipeline_state, PROJECT_ROOT
 from server.services.pipeline_runner import run_step
 
@@ -8,7 +8,10 @@ router = APIRouter()
 
 @router.post("/generate-voiceover")
 async def generate_voiceover():
-    await run_step("generate_voiceover", pipeline_state)
+    try:
+        await run_step("generate_voiceover", pipeline_state)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
     voiceovers_dir = os.path.join(PROJECT_ROOT, "output", "voiceovers")
     sections = []
