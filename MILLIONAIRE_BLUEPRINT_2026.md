@@ -665,7 +665,7 @@ VIRAL = (Strong Hook in 0.5 sec) + (Curiosity Gap) + (Emotional Trigger) + (Loop
 | Canva Pro | Thumbnails, banners | $13/month | High | All channels |
 | VidIQ or TubeBuddy | SEO, keyword research | $7.50-50/month | High | All channels |
 | Epidemic Sound | Copyright-free music | $15/month | Medium | Dark Psychology, Finance |
-| ElevenLabs | Premium AI voices | $5-22/month | Medium | Dark Psychology (deep dramatic voice) |
+| Edge TTS + FFmpeg | Voiceover generation + audio/video processing | Free | High | All channels (already configured) |
 | Notion | Project management | Free-$10/month | High | All channels |
 | Manim (Python library) | Math animations (3Blue1Brown style) | Free | High | Maths Teaching |
 | OBS Studio | Screen recording for math lessons | Free | High | Maths Teaching |
