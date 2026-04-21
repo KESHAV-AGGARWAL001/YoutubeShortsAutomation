@@ -24,13 +24,19 @@
 | **Gemini 2.5 Pro** | Generate original poems + adapt public domain rhymes | Better rhyming, age-appropriate language |
 | **Flow (text-to-video)** | Generate animated visual backgrounds per verse | Colorful, unique scenes for each poem |
 | **Whisk** | Generate illustrations (characters, animals, scenes) | Kid-friendly art style per frame |
-| **ProducerAI** | Generate catchy background melodies/jingles | Original music = no copyright strikes |
 | **Google AI Studio** | Higher limits for all generation tasks | Handle batch production (21+ videos/week) |
 | **5 TB Storage** | Store all generated assets + video archive | Never run out of space |
 | **NotebookLM** | Research popular poems, analyze what works | Feed insights into content strategy |
 | **Deep Research** | Find trending kids' content topics | Stay ahead of seasonal trends |
 | **1,000 AI Credits** | Overflow capacity for heavy generation weeks | Safety net for batch production |
 | **Google Cloud Credits** | YouTube API quota + Cloud Run automation | Hands-free publishing |
+
+**Not using AI Pro for music** — free alternatives are better suited:
+| Free Tool | Use Case | Cost |
+|---|---|---|
+| **YouTube Audio Library** | Pre-made royalty-free kids' tracks | Free, copyright-safe |
+| **Meta MusicGen** | AI-generated custom melodies per poem | Free, open-source, runs locally |
+| **Suno AI free tier** | High-quality tracks for compilations | Free (10 songs/day) |
 
 ---
 
@@ -75,13 +81,47 @@ Two modes depending on API availability:
 - Use Whisk for transitional frames
 - Mix for variety
 
-#### Step 3: Music Generation (`kids_03_generate_music.py`)
-- **Tool:** ProducerAI (10,000 credits/month = ~2,000 songs)
-- **Style:** Simple, catchy melodies — xylophone, ukulele, piano, music box
-- **Prompt:** "Happy children's nursery rhyme melody, [tempo], [instrument], no vocals, 30 seconds"
-- **Output:** Background music track (MP3)
-- **Cache:** Reuse music tracks across similar poem types (lullaby music for all bedtime poems, upbeat for counting poems)
-- **Fallback:** Use royalty-free kids' music from `kids_music/` folder
+#### Step 3: Music / Melody (`kids_03_music.py`) — FREE, Zero Cost
+
+Three free approaches, layered for reliability:
+
+**Option A — YouTube Audio Library (Simplest, recommended to start)**
+- YouTube Studio → Audio Library → free, royalty-free tracks
+- Pre-download 30-40 kids' tracks, organized by mood into `kids_poems/music/`
+  - `music/upbeat/` — counting poems, animal poems, action poems
+  - `music/calm/` — bedtime poems, lullabies
+  - `music/playful/` — alphabet, color, nursery rhyme
+  - `music/magical/` — space, fairy tale, seasonal
+- Script picks a random track from the matching mood folder
+- **Pros:** Zero setup, guaranteed copyright-safe on YouTube, high quality
+- **Cons:** Not unique per video (but kids don't care — they want familiarity)
+
+**Option B — Meta MusicGen (AI-generated, runs locally, 100% free)**
+- Open-source model from Meta: `facebook/musicgen-small` (300M params, runs on CPU)
+- Text-to-music: "happy children's xylophone melody, major key, 120 bpm"
+- Generates 15-30 second custom clips per poem
+- Python package: `audiocraft` (requires PyTorch)
+- **Pros:** Unique melody per video, fully automated, no API cost, no rate limits
+- **Cons:** Needs ~2GB disk for model, first run downloads weights, CPU generation takes ~30-60s per clip
+- **Example prompts by poem type:**
+  - Counting: "playful pizzicato strings, children's counting song, C major, 110 bpm"
+  - Bedtime: "gentle music box lullaby, soft piano, slow tempo, 70 bpm"
+  - Animals: "bouncy ukulele melody, happy, children's song, 120 bpm"
+  - Alphabet: "cheerful glockenspiel and claps, educational kids song, 130 bpm"
+
+**Option C — Suno AI Free Tier (best quality, limited)**
+- Free tier: 10 songs/day (50/month with credits)
+- Web-based, no local setup
+- Best audio quality of all free options
+- **Cons:** Rate-limited, requires manual download (no API), can't fully automate
+- **Use for:** Special videos, compilations, hero content
+
+**Recommended strategy:**
+1. Start with **Option A** (YouTube Audio Library) — zero setup, instant publishing
+2. Add **Option B** (MusicGen) later for unique per-video melodies
+3. Use **Option C** (Suno) for weekly compilation soundtracks only
+
+**Music caching:** Regardless of approach, cache generated/selected tracks in a registry so the same poem type consistently uses the same mood of music. Kids like predictability.
 
 #### Step 4: Narration (`kids_04_voiceover.py`)
 - **Tool:** Edge TTS (already in pipeline)
@@ -220,14 +260,15 @@ Kids' content typically hits YPP **2-3x faster** than adult motivation content b
 | Phase | What | Effort |
 |-------|------|--------|
 | **Phase 1** | `config.py` + `kids_01_write_poem.py` + `kids_04_voiceover.py` | 1 session |
-| **Phase 2** | `kids_05_make_video.py` (with Whisk images + Ken Burns) | 1 session |
+| **Phase 2** | `kids_05_make_video.py` (with Whisk images + Ken Burns) + music from YouTube Audio Library | 1 session |
 | **Phase 3** | `kids_06_thumbnail.py` + `kids_07_upload.py` + `main.py` | 1 session |
 | **Phase 4** | `kids_02_generate_visuals.py` (Flow integration when API available) | 1 session |
-| **Phase 5** | `kids_03_generate_music.py` (ProducerAI integration) | 1 session |
+| **Phase 5** | `kids_03_music.py` (Meta MusicGen local AI music generation) | 1 session |
 | **Phase 6** | `compile_weekly.py` (long-form compilations) | 1 session |
 | **Phase 7** | `batch_main.py` (full weekly automation) | 1 session |
 
-**Phase 1-3 gets you publishing.** Phases 4-7 upgrade quality and automate fully.
+**Phase 1-3 gets you publishing with zero music cost** (YouTube Audio Library tracks).
+**Phase 5 adds unique AI-generated melodies** per video via MusicGen (still free, just needs setup).
 
 ---
 
