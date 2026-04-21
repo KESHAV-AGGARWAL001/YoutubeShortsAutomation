@@ -26,7 +26,7 @@ import random
 
 # ── End Card — Subscribe overlay for YouTube version ─────────────────
 
-END_CARD_DURATION = 10  # Show end card for last 10 seconds
+END_CARD_DURATION = 3  # Show end card for last 3 seconds (fits short 10-15s videos)
 
 FONT_PATHS = [
     "C:/Windows/Fonts/arialbd.ttf",
@@ -431,7 +431,7 @@ def burn_end_card(video_path, total_duration):
     Only applied to the YouTube version (video_no_music.mp4).
     The reel source (video_clean.mp4) stays untouched.
     """
-    if total_duration <= END_CARD_DURATION + 5:
+    if total_duration <= END_CARD_DURATION + 3:
         print("  Video too short for end card — skipping")
         return True
 
@@ -441,46 +441,36 @@ def burn_end_card(video_path, total_duration):
     tagline = random.choice(END_CARD_TAGLINES)
     temp_out = video_path.replace(".mp4", "_ec_temp.mp4")
 
-    # Staggered reveal timings
-    t0 = round(end_start, 2)        # overlay + SUBSCRIBE
-    t1 = round(end_start + 1.5, 2)  # channel name
-    t2 = round(end_start + 3.0, 2)  # motivational tagline
-    t3 = round(end_start + 4.5, 2)  # CTA line
+    t0 = round(end_start, 2)
     te = round(total_duration, 2)
+    t1 = round(end_start + 0.5, 2)
 
-    # Escape tagline for drawtext (apostrophes break single-quote delimiters)
     tagline_safe = tagline.replace("'", "\u2019")
 
     vf_parts = [
         # Semi-transparent dark overlay
-        f"drawbox=x=0:y=0:w=iw:h=ih:color=black@0.65:t=fill"
+        f"drawbox=x=0:y=0:w=iw:h=ih:color=black@0.55:t=fill"
         f":enable='between(t,{t0},{te})'",
 
         # Big red SUBSCRIBE text
         f"drawtext=text='SUBSCRIBE'"
         f"{fp}:fontsize=80:fontcolor=#FF0000"
         f":bordercolor=white:borderw=3"
-        f":x=(w-text_w)/2:y=(h/2)-130"
+        f":x=(w-text_w)/2:y=(h/2)-80"
         f":enable='between(t,{t0},{te})'",
 
         # Channel name
         f"drawtext=text='NextLevelMind'"
-        f"{fp}:fontsize=48:fontcolor=white"
+        f"{fp}:fontsize=44:fontcolor=white"
         f":bordercolor=black:borderw=2"
-        f":x=(w-text_w)/2:y=(h/2)-20"
+        f":x=(w-text_w)/2:y=(h/2)+20"
         f":enable='between(t,{t1},{te})'",
 
-        # Motivational tagline (random from list)
+        # Motivational tagline
         f"drawtext=text='{tagline_safe}'"
-        f"{fp}:fontsize=30:fontcolor=white@0.9"
-        f":x=(w-text_w)/2:y=(h/2)+60"
-        f":enable='between(t,{t2},{te})'",
-
-        # CTA — Like / Share / Notifications
-        f"drawtext=text='Like \u00b7 Share \u00b7 Turn on Notifications'"
-        f"{fp}:fontsize=26:fontcolor=white@0.7"
-        f":x=(w-text_w)/2:y=(h/2)+130"
-        f":enable='between(t,{t3},{te})'",
+        f"{fp}:fontsize=28:fontcolor=white@0.85"
+        f":x=(w-text_w)/2:y=(h/2)+90"
+        f":enable='between(t,{t1},{te})'",
     ]
 
     vf = ",".join(vf_parts)
@@ -651,12 +641,13 @@ def main():
     if not assemble_video(voiceover_path, duration, timings):
         return
 
-    # Step 4 — End card removed to prevent text overlap
-    print("\n[4/5] Skipping end card (overwriting disabled)...")
+    # Step 4 — Subscribe end card (last 10s of video)
+    print("\n[4/5] Burning subscribe end card...")
     if os.path.exists("output/video_no_music.mp4"):
-        pass
+        vo_dur = get_duration("output/video_no_music.mp4")
+        burn_end_card("output/video_no_music.mp4", vo_dur)
     else:
-        print("  No video_no_music.mp4 found.")
+        print("  No video_no_music.mp4 found — skipping end card")
 
     # Step 5 — Mix background music (both versions)
     print("\n[5/5] Mixing background music (YouTube + Reel versions)...")

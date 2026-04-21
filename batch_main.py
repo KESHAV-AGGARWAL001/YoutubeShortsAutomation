@@ -1,13 +1,13 @@
 """
-batch_main.py — Weekly Batch Content Production
+batch_main.py — Weekly Batch Content Production (YPP Growth Mode)
 
 Generates an entire week's content in ONE run:
-  - 14 YouTube Shorts (2 per day x 7 days)
+  - 21 YouTube Shorts (3 per day x 7 days)
   - 7 Long-form videos (1 per day x 7 days)
   - 7 Community posts (1 per day, emailed)
 
 All videos uploaded with staggered schedules across the week:
-  Each day: Long-form 6 AM EST | Short #1 9 AM EST | Short #2 4 PM EST
+  Each day: Long-form 6 AM EST | Short #1 9 AM EST | Short #2 4 PM EST | Short #3 8 PM EST
 
 Usage:
   python batch_main.py
@@ -112,12 +112,14 @@ def calculate_weekly_schedule():
 
     for day in range(7):
         base = tomorrow + datetime.timedelta(days=day)
+        next_day = base + datetime.timedelta(days=1)
         schedule.append({
             "day": day + 1,
             "date": base.strftime("%a %b %d"),
             "long_utc":   base.replace(hour=11, minute=0).strftime(fmt),  # 6 AM EST
             "short1_utc": base.replace(hour=14, minute=0).strftime(fmt),  # 9 AM EST
             "short2_utc": base.replace(hour=21, minute=0).strftime(fmt),  # 4 PM EST
+            "short3_utc": next_day.replace(hour=1, minute=0).strftime(fmt),  # 8 PM EST
         })
 
     return schedule
@@ -140,8 +142,8 @@ def run_pipeline(steps, schedule_utc, label, video_num="1"):
 
 def main():
     print("\n" + "=" * 60)
-    print("  NextLevelMind — WEEKLY BATCH PRODUCTION")
-    print("  14 Shorts + 7 Long-form + 7 Community Posts")
+    print("  NextLevelMind — WEEKLY BATCH PRODUCTION (YPP Growth Mode)")
+    print("  21 Shorts + 7 Long-form + 7 Community Posts")
     print("=" * 60)
 
     os.makedirs("output", exist_ok=True)
@@ -151,10 +153,10 @@ def main():
 
     # Print schedule
     print("\n  SCHEDULE (next 7 days):")
-    print("  " + "-" * 50)
+    print("  " + "-" * 60)
     for d in schedule:
-        print(f"  Day {d['day']} ({d['date']}): Long 6AM | Short1 9AM | Short2 4PM EST")
-    print("  " + "-" * 50)
+        print(f"  Day {d['day']} ({d['date']}): Long 6AM | Short1 9AM | Short2 4PM | Short3 8PM EST")
+    print("  " + "-" * 60)
 
     ok = {"short": 0, "long": 0}
     fail = {"short": 0, "long": 0}
@@ -186,8 +188,15 @@ def main():
         else:
             fail["short"] += 1
 
+        # Short #3 (8 PM EST)
+        print(f"\n  --- Short #3 (8 PM EST) ---")
+        if run_pipeline(SHORTS_STEPS, d["short3_utc"], f"day{day}_short3", "3"):
+            ok["short"] += 1
+        else:
+            fail["short"] += 1
+
         print(f"\n  Day {day} done — Long: {'OK' if ok['long'] >= day else 'FAIL'} | "
-              f"Shorts: {ok['short']}/{day * 2}")
+              f"Shorts: {ok['short']}/{day * 3}")
 
     # Final report
     total_ok = ok["short"] + ok["long"]
@@ -196,7 +205,7 @@ def main():
     print("\n" + "=" * 60)
     print("  WEEKLY BATCH COMPLETE!")
     print("=" * 60)
-    print(f"  Shorts  : {ok['short']}/14 uploaded")
+    print(f"  Shorts  : {ok['short']}/21 uploaded")
     print(f"  Long    : {ok['long']}/7 uploaded")
     print(f"  Total   : {total_ok}/{total_ok + total_fail} videos")
     if total_fail:

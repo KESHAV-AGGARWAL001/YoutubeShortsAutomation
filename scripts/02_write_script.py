@@ -448,9 +448,10 @@ COPYRIGHT SAFETY (MANDATORY — CHANNEL SURVIVAL DEPENDS ON THIS):
 - The final script should feel like ORIGINAL ADVICE that was INSPIRED by a concept, NOT a book summary.
 - A viewer should NEVER be able to tell this came from a specific book.
 
-MISSION: Transform this into 2 viral YouTube Shorts with ORIGINAL commentary.
+MISSION: Transform this into 3 viral YouTube Shorts with ORIGINAL commentary.
 - Short 1: EMOTIONAL / STORYTELLING angle — invent a relatable scenario
 - Short 2: DIRECT ADVICE / "HARD TRUTH" angle — add your own unique take
+- Short 3: SERIES / COUNTDOWN angle — "Part X" or "3 things" format to drive binge-watching
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
 TITLE RULES (CRITICAL FOR ALGORITHM):
@@ -483,8 +484,8 @@ TITLE RULES (CRITICAL FOR ALGORITHM):
 ━━━━━━━━━━━━━━━━━━━━━━━━
 SCRIPT RULES (MOST IMPORTANT — READ 3 TIMES):
 ━━━━━━━━━━━━━━━━━━━━━━━━
-LENGTH: 15-25 seconds of speaking content. That's 40-70 words TOTAL. NOT 120 words. NOT 100 words. MAXIMUM 70 WORDS.
-Why? Short = higher completion rate = YouTube pushes to millions.
+LENGTH: 10-15 seconds of speaking content. That's 30-45 words TOTAL. NOT 70 words. NOT 60 words. MAXIMUM 45 WORDS.
+Why? Shorter = higher completion rate = YouTube pushes to millions. A 12-second Short with 95% retention DESTROYS a 25-second Short with 50% retention.
 
 STRUCTURE — Every script MUST follow this exact flow:
 1. HOOK (first sentence, 1-2 seconds): Pattern interrupt. Make them STOP.
@@ -534,7 +535,7 @@ Respond in this EXACT JSON format — no extra text outside the JSON:
             "youtube_title": "SPECIFIC personal title under 60 chars ending with #Shorts",
             "description": "Full description following structure above",
             "hook": "First punchy line — pattern interrupt — uses YOU",
-            "script": "Full 40-70 word script. SHORT. Every word earns its place.",
+            "script": "Full 30-45 word script. ULTRA SHORT. Every word earns its place.",
             "cta": "One short line that triggers rewatch or follow",
             "tags": ["shorts", "youtubeshorts", "... {tag_count} total unique tags"],
             "category_id": "22"
@@ -544,8 +545,18 @@ Respond in this EXACT JSON format — no extra text outside the JSON:
             "youtube_title": "SPECIFIC personal title under 60 chars ending with #Shorts",
             "description": "Full description following structure above",
             "hook": "First punchy line — pattern interrupt — uses YOU",
-            "script": "Full 40-70 word script. SHORT. Every word earns its place.",
+            "script": "Full 30-45 word script. ULTRA SHORT. Every word earns its place.",
             "cta": "One short line that triggers rewatch or follow",
+            "tags": ["shorts", "youtubeshorts", "... {tag_count} total unique tags"],
+            "category_id": "27"
+        }},
+        {{
+            "angle_type": "series countdown",
+            "youtube_title": "Use Part X or numbered list format — under 60 chars ending with #Shorts",
+            "description": "Full description following structure above",
+            "hook": "First punchy line — pattern interrupt — uses YOU",
+            "script": "Full 30-45 word script. ULTRA SHORT. Every word earns its place.",
+            "cta": "One short line that triggers rewatch or follow — mention next part",
             "tags": ["shorts", "youtubeshorts", "... {tag_count} total unique tags"],
             "category_id": "27"
         }}
@@ -577,23 +588,25 @@ def main():
 
     if video_num == "1":
         book_page_text, current_book_name = get_book_page()
-        print("\n[1/3] Generating 2 shorts from book page...")
+        print("\n[1/3] Generating 3 shorts from book page...")
         script_data = write_shorts_scripts(book_page_text, current_book_name)
         with open(cache_file, "w", encoding="utf-8") as f:
             json.dump(script_data, f, indent=2, ensure_ascii=False)
         short_idx = 0
     else:
         if not os.path.exists(cache_file):
-            print("\n[1/3] No cache found, generating new...")
+            print(f"\n[1/3] No cache found, generating new...")
             book_page_text, current_book_name = get_book_page()
             script_data = write_shorts_scripts(book_page_text, current_book_name)
             with open(cache_file, "w", encoding="utf-8") as f:
                 json.dump(script_data, f, indent=2, ensure_ascii=False)
         else:
-            print("\n[1/3] Loading script from cache for Video 2...")
+            print(f"\n[1/3] Loading script from cache for Video {video_num}...")
             with open(cache_file, "r", encoding="utf-8") as f:
                 script_data = json.load(f)
-        short_idx = 1
+        short_idx = int(video_num) - 1
+        if short_idx >= len(script_data.get("shorts", [])):
+            short_idx = len(script_data["shorts"]) - 1
 
     my_short = script_data["shorts"][short_idx]
     
@@ -631,8 +644,13 @@ def main():
                 tags.append(t)
                 existing_lower.add(t.lower())
 
-    # Ensure description always ends with a hashtag block
+    # Inject subscribe CTA before hashtags (critical for YPP subscriber growth)
     description = my_short.get("description", "")
+    sub_cta = "\n\n🔔 Subscribe to @NextLevelMind for daily mindset shifts that actually work."
+    if "@NextLevelMind" not in description:
+        description = description.rstrip() + sub_cta
+
+    # Ensure description always ends with a hashtag block
     if "#Shorts" not in description and "#shorts" not in description:
         description = description.rstrip() + "\n\n" + FALLBACK_HASHTAGS
         print("  [!] AI omitted hashtags — fallback block appended to description")

@@ -91,41 +91,40 @@ def cleanup_output():
 
 def get_schedules():
     """
-    Schedule both videos for TODAY.
-    Preferred times: 9:00 AM EST (14:00 UTC) and 4:00 PM EST (21:00 UTC).
-    If a preferred time has already passed, schedule 15 min from now instead
-    (YouTube requires at least 5 min in the future for scheduled uploads).
+    Schedule 3 videos for TODAY.
+    Preferred times: 9:00 AM EST (14:00 UTC), 4:00 PM EST (21:00 UTC),
+    and 8:00 PM EST (01:00 UTC next day) — peak mobile scroll time.
+    If a preferred time has already passed, schedule 15 min from now instead.
     """
     now = datetime.datetime.now(datetime.timezone.utc)
     fmt = "%Y-%m-%dT%H:%M:%S.000Z"
     buffer = datetime.timedelta(minutes=15)
 
-    # Preferred times today
+    # Preferred times today (UTC)
     m_utc = now.replace(hour=14, minute=0, second=0, microsecond=0)  # 9:00 AM EST
     e_utc = now.replace(hour=21, minute=0, second=0, microsecond=0)  # 4:00 PM EST
+    n_utc = (now + datetime.timedelta(days=1)).replace(hour=1, minute=0, second=0, microsecond=0)  # 8:00 PM EST
 
-    # If preferred time already passed → use 15 min from now
-    if m_utc <= now:
-        m_utc  = now + buffer
-        m_label = f"~{(now + buffer).strftime('%I:%M %p')} UTC (9AM EST passed, publishing now)"
-    else:
-        m_label = "9:00 AM EST (USA morning)"
+    slots = [
+        (m_utc, "9:00 AM EST (USA morning)"),
+        (e_utc, "4:00 PM EST (USA evening)"),
+        (n_utc, "8:00 PM EST (peak scroll)"),
+    ]
 
-    if e_utc <= now:
-        e_utc  = now + buffer + datetime.timedelta(minutes=5)  # slight offset from Video 1
-        e_label = f"~{(now + buffer + datetime.timedelta(minutes=5)).strftime('%I:%M %p')} UTC (4PM EST passed, publishing now)"
-    else:
-        e_label = "4:00 PM EST (USA evening)"
+    result = []
+    for i, (slot_utc, slot_label) in enumerate(slots):
+        if slot_utc <= now:
+            offset = buffer + datetime.timedelta(minutes=5 * i)
+            slot_utc = now + offset
+            slot_label = f"~{slot_utc.strftime('%I:%M %p')} UTC ({slot_label} passed, publishing now)"
+        result.append((slot_utc.strftime(fmt), slot_label))
 
-    return (
-        m_utc.strftime(fmt), m_label,
-        e_utc.strftime(fmt), e_label,
-    )
+    return result
 
 
-def run_pipeline(video_num, schedule_utc, schedule_label):
+def run_pipeline(video_num, total_videos, schedule_utc, schedule_label):
     print(f"\n{'#'*50}")
-    print(f"  VIDEO {video_num}/2")
+    print(f"  VIDEO {video_num}/{total_videos}")
     print(f"  YouTube goes live: {schedule_label}")
     print(f"{'#'*50}")
 
@@ -154,26 +153,27 @@ def run_pipeline(video_num, schedule_utc, schedule_label):
 def main():
     print("\n" + "="*50)
     print("  NextLevelMind — Daily Content Bot")
-    print("  2 YouTube videos per day")
+    print("  3 YouTube Shorts per day (YPP growth mode)")
     print("="*50)
 
     os.makedirs("output",  exist_ok=True)
     os.makedirs("archive", exist_ok=True)
     os.makedirs("reels",   exist_ok=True)
 
-    m_utc, m_label, e_utc, e_label = get_schedules()
+    schedules = get_schedules()
+    total = len(schedules)
 
-    print(f"\n  Schedule:")
-    print(f"  YouTube 1   → {m_label}")
-    print(f"  YouTube 2   → {e_label}")
+    print(f"\n  Schedule ({total} videos):")
+    for i, (utc, label) in enumerate(schedules, 1):
+        print(f"  YouTube {i}   → {label}")
 
-    run_pipeline(1, m_utc, m_label)
-    run_pipeline(2, e_utc, e_label)
+    for i, (utc, label) in enumerate(schedules, 1):
+        run_pipeline(i, total, utc, label)
 
     print("\n" + "="*50)
     print("  ALL DONE!")
-    print(f"  YouTube 1 → live at {m_label}")
-    print(f"  YouTube 2 → live at {e_label}")
+    for i, (utc, label) in enumerate(schedules, 1):
+        print(f"  YouTube {i} → live at {label}")
     print(f"  Studio: https://studio.youtube.com")
     print("="*50)
 

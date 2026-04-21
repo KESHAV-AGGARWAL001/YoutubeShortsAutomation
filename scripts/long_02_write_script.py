@@ -636,8 +636,10 @@ def main():
     tags = sanitize_tags(tags)
     print(f"  Tags     : {len(tags)} tags ({sum(len(t) for t in tags)} chars)")
 
-    # Build description with affiliate links
+    # Build description with subscribe CTA + affiliate links
     description = script_data.get("description", "")
+    if "@NextLevelMind" not in description:
+        description = description.rstrip() + "\n\n🔔 Subscribe to @NextLevelMind for daily mindset shifts that actually work."
     if "#motivation" not in description.lower():
         description = description.rstrip() + (
             "\n\n#motivation #mindset #selfimprovement #discipline #successmindset "
