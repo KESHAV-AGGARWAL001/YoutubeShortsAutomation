@@ -249,6 +249,142 @@ Use these to find fallback images for `assets/images/`, visual inspiration, and 
 
 ---
 
+## Fallback Image Download Scripts
+
+Three automated scripts to build your `assets/images/` library. These images are used as fallback when Veo or Gemini image generation fails during video production.
+
+### Script Comparison
+
+| Script | Source | Cost | Copyright | Quality | Setup |
+|--------|--------|------|-----------|---------|-------|
+| `generate_fallback_batch.py` | Gemini AI | Free (API quota) | You own them | Best — exact pipeline style match | Just needs `KP_GEMINI_API_KEY` |
+| `download_pixabay.py` | Pixabay API | Free | Pixabay License (commercial OK) | Good — real illustrations | Free account + API key |
+| `download_pinterest.py` | Pinterest | Free | Check per image | Mixed — needs manual review | `pip install gallery-dl` |
+
+### Recommended Order
+
+**Start with Script 1** (Gemini) — it produces images in the exact same style your pipeline uses. Add Script 2 (Pixabay) for variety. Use Script 3 (Pinterest) only if you need more volume.
+
+---
+
+### Script 1: Gemini Batch Generator (Recommended)
+
+Generates images using your own AI Pro API key. Perfect style match, 100% copyright-free.
+
+**Steps to set up and run:**
+
+1. Make sure `KP_GEMINI_API_KEY` is set in `kids_poems/.env`
+2. Run the script:
+   ```bash
+   cd kids_poems
+
+   # List all categories and prompt counts
+   python generate_fallback_batch.py --list
+
+   # Generate all categories (74 images total)
+   python generate_fallback_batch.py
+
+   # Generate one category only
+   python generate_fallback_batch.py --category animal
+
+   # Limit to 5 images per category
+   python generate_fallback_batch.py --count 5
+   ```
+3. Images are saved to `kids_poems/assets/images/{category}/`
+4. Takes ~2-3 minutes per category (API rate limits)
+
+**Output:** ~74 images across 9 categories (general, animal, nursery_rhyme, counting, alphabet, colors, bedtime, seasonal, action)
+
+---
+
+### Script 2: Pixabay API Downloader
+
+Downloads free, copyright-safe illustrations from Pixabay. Good variety, legal for commercial use.
+
+**Steps to set up and run:**
+
+1. Create a free Pixabay account: https://pixabay.com/accounts/register/
+2. Get your API key: https://pixabay.com/api/docs/ (scroll to "Search Images" → your key is shown at the top)
+3. Add to `kids_poems/.env`:
+   ```
+   PIXABAY_API_KEY=your_pixabay_api_key_here
+   ```
+4. Run the script:
+   ```bash
+   cd kids_poems
+
+   # List all categories
+   python download_pixabay.py --list
+
+   # Download all categories (10 images per search term)
+   python download_pixabay.py
+
+   # Download one category only
+   python download_pixabay.py --category bedtime
+
+   # Download 15 images per search term
+   python download_pixabay.py --limit 15
+   ```
+5. Images are saved to `kids_poems/assets/images/{category}/`
+
+**Output:** ~450+ images across 9 categories (depends on available results)
+
+---
+
+### Script 3: Pinterest Scraper
+
+Scrapes images from Pinterest search results. Largest volume, but requires manual copyright review.
+
+**Steps to set up and run:**
+
+1. Install gallery-dl:
+   ```bash
+   pip install gallery-dl
+   ```
+2. Run the script:
+   ```bash
+   cd kids_poems
+
+   # List all categories
+   python download_pinterest.py --list
+
+   # Download all categories (10 images per search term)
+   python download_pinterest.py
+
+   # Download one category only
+   python download_pinterest.py --category colors
+
+   # Download 20 images per search term
+   python download_pinterest.py --limit 20
+   ```
+3. Images are saved to `kids_poems/assets/images/{category}/`
+4. **Important:** Manually review downloaded images — Pinterest images may have varying copyright. Only use for reference/inspiration unless you verify the license.
+
+**Output:** ~600+ images across 9 categories
+
+---
+
+### After Downloading
+
+All three scripts save images into the same folder structure:
+
+```
+kids_poems/assets/images/
+├── general/          — generic kids cartoon illustrations
+├── animal/           — cartoon animals (ducks, bunnies, elephants)
+├── nursery_rhyme/    — classic rhyme scenes (Humpty Dumpty, stars)
+├── counting/         — number characters, counting scenes
+├── alphabet/         — ABC letters, alphabet animals
+├── colors/           — rainbow, primary colors, shapes
+├── bedtime/          — moon, stars, sleepy characters
+├── seasonal/         — Christmas, Easter, seasons
+└── action/           — dancing, jumping, clapping kids
+```
+
+The pipeline's `image_generator.py` automatically picks from these folders when AI image generation fails. No extra configuration needed — just populate the folders and the fallback works.
+
+---
+
 ## YPP Timeline Estimate
 
 | Metric | Target | Estimate |
