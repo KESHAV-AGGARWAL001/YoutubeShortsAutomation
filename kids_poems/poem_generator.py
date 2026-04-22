@@ -16,13 +16,13 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import (
-    GEMINI_MODEL, POEM_CATEGORIES, OUTPUT_FOLDER,
+    GEMINI_API_KEY, GEMINI_MODEL, POEM_CATEGORIES, OUTPUT_FOLDER,
     POEMS_FOLDER, DEFAULT_TAGS, CHANNEL_NAME,
 )
 
 from google import genai
 
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+client = genai.Client(api_key=GEMINI_API_KEY)
 FALLBACK_MODEL = "gemini-2.0-flash"
 
 

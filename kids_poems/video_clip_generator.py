@@ -15,7 +15,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import (
-    VEO_MODEL, VEO_LITE_MODEL, VEO_USE_LITE,
+    GEMINI_API_KEY, VEO_MODEL, VEO_LITE_MODEL, VEO_USE_LITE,
     VEO_TIMEOUT, VEO_ENHANCE_PROMPT, VEO_MAX_WORKERS,
     OUTPUT_FOLDER,
 )
@@ -23,7 +23,7 @@ from config import (
 from google import genai
 from google.genai import types
 
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 
 def pick_veo_duration(needed_seconds):

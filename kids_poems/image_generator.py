@@ -14,14 +14,14 @@ import random
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import (
-    GEMINI_IMAGE_MODEL, IMAGE_FOLDER, OUTPUT_FOLDER,
+    GEMINI_API_KEY, GEMINI_IMAGE_MODEL, IMAGE_FOLDER, OUTPUT_FOLDER,
     SUPPORTED_IMAGE_FORMATS,
 )
 
 from google import genai
 from google.genai import types
 
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 
 def generate_image(visual_description, output_path, index=0):

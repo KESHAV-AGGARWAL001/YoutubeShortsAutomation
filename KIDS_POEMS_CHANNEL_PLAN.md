@@ -174,10 +174,63 @@ python main.py --no-upload  # Generate only, skip upload
 
 ### Prerequisites
 
-1. Download music tracks to `kids_poems/music/{mood}/` folders
-2. Set up YouTube channel + OAuth credentials (`client_secrets_kp.json`)
-3. Ensure `GEMINI_API_KEY` is set in root `.env`
+1. Set `KP_GEMINI_API_KEY` in `kids_poems/.env` (your AI Pro account's API key)
+2. Download music tracks to `kids_poems/music/{mood}/` folders
+3. Set up YouTube channel + OAuth credentials (`client_secrets_kp.json`)
 4. Google AI Pro subscription (for Veo 3.1 access)
+
+---
+
+## Environment Configuration — Separate API Keys Per Channel
+
+Each channel has its own `.env` file with isolated API keys. This prevents conflicts when different channels use different Google accounts.
+
+```
+YoutubeShortsAutomation/
+├── .env                    # Root — NextLevelMind (GEMINI_API_KEY)
+├── radha_krishna/.env      # Radha Krishna channel config
+└── kids_poems/.env         # LittleStarFactory config (KP_GEMINI_API_KEY)
+```
+
+### Key Resolution Order
+
+```
+kids_poems/.env  →  KP_GEMINI_API_KEY  (priority 1 — AI Pro account)
+       ↓ fallback
+root .env        →  GEMINI_API_KEY     (priority 2 — shared key)
+```
+
+- `KP_GEMINI_API_KEY` — set this to your Google AI Pro account's API key (the account with Veo 3.1 access)
+- If not set, falls back to the root `GEMINI_API_KEY` automatically
+- YouTube OAuth (`client_secrets_kp.json`) is always from the channel's own Google account — completely independent from the Gemini API key
+
+### Why Separate Keys?
+
+| Account | Purpose | Key |
+|---------|---------|-----|
+| AI Pro email | Gemini API, Veo 3.1, image generation | `KP_GEMINI_API_KEY` |
+| Channel email | YouTube upload, OAuth | `client_secrets_kp.json` |
+
+These are independent auth flows — Gemini API key generates the content, YouTube OAuth uploads it. Two accounts, zero conflict.
+
+### kids_poems/.env Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `KP_GEMINI_API_KEY` | falls back to `GEMINI_API_KEY` | Gemini API key (AI Pro account) |
+| `KP_TTS_VOICE` | `en-US-AnaNeural` | Edge TTS voice |
+| `KP_TTS_RATE` | `-15%` | Speech rate (slower for kids) |
+| `KP_TTS_PITCH` | `+3Hz` | Pitch adjustment |
+| `KP_IMAGES_PER_VIDEO` | `6` | Images per slideshow |
+| `KP_MUSIC_VOLUME` | `0.20` | Background music volume |
+| `KP_GEMINI_MODEL` | `gemini-2.5-flash` | AI model for poems |
+| `KP_GEMINI_IMAGE_MODEL` | `gemini-2.0-flash-exp` | AI model for images |
+| `KP_VEO_ENABLED` | `true` | Enable Veo animated clips |
+| `KP_VEO_MODEL` | `veo-3.1-generate-preview` | Veo model |
+| `KP_VEO_USE_LITE` | `false` | Use Veo Lite as fallback |
+| `KP_VEO_TIMEOUT` | `300` | Veo generation timeout (seconds) |
+| `KP_VEO_ENHANCE_PROMPT` | `true` | Let Veo enhance prompts |
+| `KP_VEO_MAX_WORKERS` | `4` | Parallel clip generation workers |
 
 ---
 
@@ -187,6 +240,6 @@ python main.py --no-upload  # Generate only, skip upload
 |-----------|---------|-------|
 | Edge TTS | Yes | Different voice config (slower, higher pitch) |
 | FFmpeg | Yes | Different subtitle style (larger, colorful) |
-| Gemini API | Yes | Same `GEMINI_API_KEY` |
+| Gemini API | **No** | Separate `KP_GEMINI_API_KEY` in `kids_poems/.env` |
 | Google AI Pro | Yes | Same subscription, shared Veo quota |
 | YouTube API code | Pattern shared | Separate OAuth credentials per channel |

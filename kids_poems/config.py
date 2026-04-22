@@ -30,6 +30,7 @@ TTS_PITCH = os.getenv("KP_TTS_PITCH", "+3Hz")
 MUSIC_VOLUME = float(os.getenv("KP_MUSIC_VOLUME", "0.20"))
 
 # ── Gemini Settings ───────────────────────────────────
+GEMINI_API_KEY = os.getenv("KP_GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
 GEMINI_MODEL = os.getenv("KP_GEMINI_MODEL", "gemini-2.5-flash")
 GEMINI_IMAGE_MODEL = os.getenv("KP_GEMINI_IMAGE_MODEL", "gemini-2.0-flash-exp")
 
