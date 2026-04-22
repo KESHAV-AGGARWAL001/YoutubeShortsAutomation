@@ -152,6 +152,103 @@ Pipeline auto-picks a random track matching the poem's mood category.
 
 ---
 
+## Pinterest Search Terms — Kids Animated Illustrations
+
+Use these to find fallback images for `assets/images/`, visual inspiration, and reference styles for AI prompts.
+
+### General Style
+
+- Kids cartoon illustration
+- Children's book illustration art
+- Cute cartoon characters for kids
+- Kawaii kids illustration
+- Toddler friendly cartoon art
+- Preschool cartoon illustration
+- Bright colorful kids illustration
+- 2D flat illustration for children
+- Digital art for kids videos
+- Cute nursery wall art cartoon
+
+### Animals
+
+- Cute cartoon animals for kids
+- Baby animal illustration kawaii
+- Cartoon duck pond kids
+- Cute cartoon bunny illustration
+- Friendly cartoon farm animals
+- Cartoon jungle animals for toddlers
+- Cartoon ocean animals kids
+- Cute cartoon dinosaur kids
+- Baby elephant cartoon illustration
+- Cartoon cats and dogs for children
+
+### Nursery Rhymes & Poems
+
+- Nursery rhyme illustration art
+- Twinkle twinkle little star cartoon
+- Humpty Dumpty kids illustration
+- Jack and Jill cartoon art
+- Hey Diddle Diddle illustration
+- Mother Goose cartoon art
+- Kids poem visual illustration
+- Storybook nursery rhyme art
+
+### Counting & Numbers
+
+- Cartoon numbers for kids
+- Counting illustration preschool
+- Number characters cartoon kids
+- Kids counting game illustration
+- Colorful numbers cartoon toddler
+- 123 kids learning illustration
+
+### Alphabet & Letters
+
+- ABC cartoon illustration kids
+- Alphabet characters for children
+- Letter learning cartoon art
+- Kids alphabet poster illustration
+- Cute alphabet animal illustration
+- Preschool letter cartoon art
+
+### Colors & Shapes
+
+- Rainbow cartoon kids illustration
+- Learn colors kids cartoon
+- Colorful shapes for toddlers art
+- Cartoon rainbow characters kids
+- Primary colors cartoon illustration
+- Shapes cartoon preschool art
+
+### Bedtime & Lullaby
+
+- Bedtime cartoon illustration kids
+- Sleepy moon stars cartoon
+- Goodnight kids illustration art
+- Dreamy night sky cartoon toddler
+- Baby sleeping cartoon cute
+- Lullaby illustration soft pastel
+
+### Seasonal & Holiday
+
+- Christmas cartoon kids illustration
+- Halloween cute cartoon for kids
+- Spring flowers cartoon children
+- Winter snowflake cartoon kids
+- Autumn leaves cartoon toddler
+- Easter bunny kids cartoon art
+
+### Action & Fun
+
+- Kids dancing cartoon illustration
+- Clapping hands cartoon kids
+- Jumping cartoon toddler art
+- Kids playing cartoon illustration
+- Funny cartoon kids laughing
+- Silly face cartoon for children
+
+---
+
 ## YPP Timeline Estimate
 
 | Metric | Target | Estimate |
