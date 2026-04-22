@@ -94,18 +94,25 @@ SEARCH_TERMS = {
 }
 
 
-def check_gallery_dl():
-    """Check if gallery-dl is installed."""
+def _get_gallery_dl_cmd():
+    """Find the working gallery-dl command."""
     if shutil.which("gallery-dl"):
-        return True
+        return ["gallery-dl"]
     try:
-        subprocess.run(
+        result = subprocess.run(
             [sys.executable, "-m", "gallery_dl", "--version"],
             capture_output=True, text=True,
         )
-        return True
+        if result.returncode == 0:
+            return [sys.executable, "-m", "gallery_dl"]
     except Exception:
-        return False
+        pass
+    return None
+
+
+def check_gallery_dl():
+    """Check if gallery-dl is installed."""
+    return _get_gallery_dl_cmd() is not None
 
 
 def download_category(category, terms, limit=10):
@@ -113,13 +120,17 @@ def download_category(category, terms, limit=10):
     cat_dir = os.path.join(DOWNLOAD_DIR, category)
     os.makedirs(cat_dir, exist_ok=True)
 
+    base_cmd = _get_gallery_dl_cmd()
+    if not base_cmd:
+        print("  ERROR: gallery-dl not found")
+        return 0
+
     total = 0
     for term in terms:
         search_url = f"https://www.pinterest.com/search/pins/?q={term.replace(' ', '%20')}"
         print(f"  Searching: {term}")
 
-        cmd = [
-            "gallery-dl",
+        cmd = base_cmd + [
             "--dest", cat_dir,
             "--range", f"1-{limit}",
             "--filename", "{category}_{num:>03}.{extension}",
