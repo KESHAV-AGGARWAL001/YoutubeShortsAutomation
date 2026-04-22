@@ -104,6 +104,34 @@ def generate_all_images(poem_data):
     return generated_paths
 
 
+def generate_fallback_images(poem_data, indices):
+    """
+    Generate images only for specific verse indices (used when Veo fails
+    for certain verses). Returns dict mapping index to image path.
+    """
+    visuals = poem_data.get("visual_descriptions", [])
+    images_dir = os.path.join(OUTPUT_FOLDER, "images")
+    os.makedirs(images_dir, exist_ok=True)
+
+    result = {}
+    fallbacks = _get_fallback_images()
+
+    for i in indices:
+        img_path = os.path.join(images_dir, f"fallback_{i:02d}.png")
+        desc = visuals[i] if i < len(visuals) else "colorful cartoon scene for children"
+
+        if generate_image(desc, img_path, i):
+            result[i] = img_path
+        elif fallbacks:
+            import shutil
+            fb = random.choice(fallbacks)
+            shutil.copy2(fb, img_path)
+            result[i] = img_path
+            print(f"    Fallback {i + 1}: {os.path.basename(fb)}")
+
+    return result
+
+
 def _get_fallback_images():
     """Get list of pre-existing images from assets/images/ folder."""
     if not os.path.isdir(IMAGE_FOLDER):

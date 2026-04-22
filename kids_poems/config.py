@@ -33,6 +33,15 @@ MUSIC_VOLUME = float(os.getenv("KP_MUSIC_VOLUME", "0.20"))
 GEMINI_MODEL = os.getenv("KP_GEMINI_MODEL", "gemini-2.5-flash")
 GEMINI_IMAGE_MODEL = os.getenv("KP_GEMINI_IMAGE_MODEL", "gemini-2.0-flash-exp")
 
+# ── Veo Video Generation (Google AI Pro) ─────────
+VEO_ENABLED = os.getenv("KP_VEO_ENABLED", "true").lower() == "true"
+VEO_MODEL = os.getenv("KP_VEO_MODEL", "veo-3.1-generate-preview")
+VEO_LITE_MODEL = "veo-3.1-lite-generate-preview"
+VEO_USE_LITE = os.getenv("KP_VEO_USE_LITE", "false").lower() == "true"
+VEO_TIMEOUT = int(os.getenv("KP_VEO_TIMEOUT", "300"))
+VEO_ENHANCE_PROMPT = os.getenv("KP_VEO_ENHANCE_PROMPT", "true").lower() == "true"
+VEO_MAX_WORKERS = int(os.getenv("KP_VEO_MAX_WORKERS", "4"))
+
 # ── YouTube Upload Settings ───────────────────────────
 YOUTUBE_CLIENT_SECRETS_KP = os.getenv(
     "YOUTUBE_CLIENT_SECRETS_KP",

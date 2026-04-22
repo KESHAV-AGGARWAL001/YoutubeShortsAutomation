@@ -27,13 +27,18 @@ import random
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from config import OUTPUT_FOLDER, POEM_CATEGORIES, CHANNEL_NAME
+from config import OUTPUT_FOLDER, POEM_CATEGORIES, CHANNEL_NAME, VEO_ENABLED
 from poem_generator import generate_poem
 from image_generator import generate_all_images
 from tts_generator import generate_voiceover
 from slideshow_builder import build_slideshow
 from video_compositor import composite_video
 from youtube_uploader import upload_video
+
+if VEO_ENABLED:
+    from video_clip_generator import generate_all_clips
+    from clip_concatenator import concatenate_clips, image_to_video_segment
+    from image_generator import generate_fallback_images
 
 
 def cleanup_output():
@@ -125,24 +130,71 @@ def run_single_pipeline(category=None, schedule_utc=None, video_num=1,
     with open(os.path.join(OUTPUT_FOLDER, "poem_data.json"), "w", encoding="utf-8") as f:
         json.dump(poem_data, f, indent=2, ensure_ascii=False)
 
-    # Step 2: Generate images
-    print("\n[Step 2/6] Generating images...")
-    images = generate_all_images(poem_data)
-    if not images:
-        print("  ERROR: No images generated — skipping video")
-        return False
-    print("  Done")
-
-    # Step 3: Generate voiceover
-    print("\n[Step 3/6] Generating voiceover...")
-    vo_path, vo_duration, timings = generate_voiceover(poem_data["poem_lines"])
-    print("  Done")
-
-    # Step 4: Build slideshow
-    print("\n[Step 4/6] Building slideshow...")
     slideshow_path = os.path.join(OUTPUT_FOLDER, "slideshow.mp4")
-    build_slideshow(images, slideshow_path, target_duration=vo_duration, timings=timings)
-    print("  Done")
+
+    if VEO_ENABLED:
+        # Veo path: voiceover first (need timings for clip durations)
+        print("\n[Step 2/6] Generating voiceover...")
+        vo_path, vo_duration, timings = generate_voiceover(poem_data["poem_lines"])
+        print("  Done")
+
+        print("\n[Step 3/6] Generating animated clips (Veo 3.1)...")
+        clip_paths, failed_indices = generate_all_clips(poem_data, timings)
+
+        if len(failed_indices) == len(poem_data.get("visual_descriptions", [])):
+            # Total failure — fall back to legacy image + slideshow pipeline
+            print("  All clips failed — falling back to static images...")
+            print("\n[Step 3b/6] Generating images (fallback)...")
+            images = generate_all_images(poem_data)
+            if not images:
+                print("  ERROR: No images generated — skipping video")
+                return False
+            print("\n[Step 4/6] Building slideshow (fallback)...")
+            build_slideshow(images, slideshow_path, target_duration=vo_duration, timings=timings)
+        else:
+            # Handle partial failures with image fallback
+            if failed_indices:
+                print(f"\n  Generating fallback images for {len(failed_indices)} failed clips...")
+                fb_images = generate_fallback_images(poem_data, failed_indices)
+                for idx in failed_indices:
+                    if idx in fb_images:
+                        fb_video = os.path.join(OUTPUT_FOLDER, "clips", f"fb_{idx:02d}.mp4")
+                        dur = timings[idx]["end"] - timings[idx]["start"]
+                        if idx + 1 < len(timings):
+                            dur += timings[idx + 1]["start"] - timings[idx]["end"]
+                        dur = max(2.0, dur)
+                        seg = image_to_video_segment(fb_images[idx], fb_video, dur)
+                        if seg:
+                            clip_paths[idx] = seg
+
+            # Filter out any remaining None entries
+            valid_clips = [p for p in clip_paths if p]
+            valid_timings = [t for i, t in enumerate(timings) if clip_paths[i]]
+
+            if not valid_clips:
+                print("  ERROR: No clips available — skipping video")
+                return False
+
+            print("\n[Step 4/6] Concatenating animated clips...")
+            concatenate_clips(valid_clips, slideshow_path, timings=valid_timings)
+
+        print("  Done")
+    else:
+        # Legacy path: static images + Ken Burns slideshow
+        print("\n[Step 2/6] Generating images...")
+        images = generate_all_images(poem_data)
+        if not images:
+            print("  ERROR: No images generated — skipping video")
+            return False
+        print("  Done")
+
+        print("\n[Step 3/6] Generating voiceover...")
+        vo_path, vo_duration, timings = generate_voiceover(poem_data["poem_lines"])
+        print("  Done")
+
+        print("\n[Step 4/6] Building slideshow...")
+        build_slideshow(images, slideshow_path, target_duration=vo_duration, timings=timings)
+        print("  Done")
 
     # Step 5: Composite final video (slideshow + voice + music + subtitles)
     print("\n[Step 5/6] Compositing final video...")
