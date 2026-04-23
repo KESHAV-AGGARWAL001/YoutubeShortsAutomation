@@ -138,7 +138,55 @@ When `KP_VEO_ENABLED=true` (default), the pipeline flow changes:
 
 ## Music Setup
 
-Download 8-10 tracks per mood from YouTube Audio Library:
+### Automated Download — `download_music.py` (Recommended)
+
+Downloads copyright-free music from Freesound.org. All tracks are CC0 (Creative Commons 0) — free for commercial use, no attribution needed, safe for YouTube monetization.
+
+**Steps to set up and run:**
+
+1. Create a free account at https://freesound.org/home/register/
+2. Get your API key at https://freesound.org/apiv2/apply/
+   - Choose "APIv2 credential"
+   - Any description works (e.g., "Kids poems channel music")
+   - Key is shown immediately after applying
+3. Add to `kids_poems/.env`:
+   ```
+   FREESOUND_API_KEY=your_freesound_api_key_here
+   ```
+4. Run the script:
+   ```bash
+   cd kids_poems
+
+   # List available moods and search terms
+   python download_music.py --list
+
+   # Download all moods (~35 tracks per mood)
+   python download_music.py
+
+   # Download one mood only
+   python download_music.py --mood calm
+
+   # Download more tracks per search term
+   python download_music.py --limit 10
+   ```
+5. Tracks are saved directly into `kids_poems/music/{mood}/`
+
+**Search terms per mood:**
+
+| Mood | Search Terms |
+|------|-------------|
+| **upbeat** | happy children music, kids fun melody, upbeat cartoon music, cheerful ukulele kids, energetic xylophone children |
+| **calm** | lullaby music box, gentle piano lullaby, soft kids bedtime music, calm music box melody, sleeping baby music |
+| **playful** | cheerful glockenspiel kids, playful marimba children, funny cartoon music, happy whistle melody, kids toy piano music |
+| **magical** | magical fairy music, dreamy celesta melody, whimsical music box fairy, enchanted harp children, sparkle chime magical |
+
+**Output:** ~100-140 tracks across 4 moods (depends on search results)
+
+### Manual Alternative — YouTube Audio Library
+
+If you prefer hand-picked tracks, download 8-10 per mood from [YouTube Audio Library](https://studio.youtube.com/channel/UC/music).
+
+### Folder Structure
 
 ```
 kids_poems/music/
@@ -464,6 +512,8 @@ These are independent auth flows — Gemini API key generates the content, YouTu
 | `KP_VEO_TIMEOUT` | `300` | Veo generation timeout (seconds) |
 | `KP_VEO_ENHANCE_PROMPT` | `true` | Let Veo enhance prompts |
 | `KP_VEO_MAX_WORKERS` | `4` | Parallel clip generation workers |
+| `FREESOUND_API_KEY` | — | Freesound.org API key (for music download) |
+| `PIXABAY_API_KEY` | — | Pixabay API key (for image download) |
 
 ---
 
