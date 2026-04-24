@@ -36,7 +36,7 @@ GEMINI_IMAGE_MODEL = os.getenv("KP_GEMINI_IMAGE_MODEL", "gemini-2.0-flash-exp")
 
 # ── HuggingFace Fallback ─────────────────────────
 HF_TOKEN = os.getenv("HF_TOKEN", "")
-HF_TEXT_MODEL = os.getenv("KP_HF_TEXT_MODEL", "mistralai/Mistral-Small-24B-Instruct-2501")
+HF_TEXT_MODEL = os.getenv("KP_HF_TEXT_MODEL", "mistralai/Mistral-7B-Instruct-v0.3")
 HF_IMAGE_MODEL = os.getenv("KP_HF_IMAGE_MODEL", "stabilityai/stable-diffusion-xl-base-1.0")
 
 # ── Veo Video Generation (Google AI Pro) ─────────

@@ -84,7 +84,7 @@ Video Clips:        Veo 3.1 → Veo 3.1 Lite → static image + Ken Burns
 | Provider | Models Used | When It Kicks In |
 |----------|------------|-----------------|
 | **Gemini (primary)** | `gemini-2.5-pro` for poems, `gemini-2.0-flash-exp` for images | Always tried first |
-| **HuggingFace (fallback)** | `Mistral-Small-24B` for poems, `stable-diffusion-xl` for images | When Gemini returns 429/overloaded/quota errors |
+| **HuggingFace (fallback)** | `Mistral-7B-Instruct-v0.3` for poems, `stable-diffusion-xl` for images | When Gemini returns 429/overloaded/quota errors |
 | **Local assets (last resort)** | Pre-downloaded images from `assets/images/` | When both AI providers fail |
 
 ### HuggingFace Setup (One-Time)
@@ -546,7 +546,7 @@ These are independent auth flows — Gemini API key generates the content, YouTu
 | `KP_GEMINI_MODEL` | `gemini-2.5-pro` | AI model for poems |
 | `KP_GEMINI_IMAGE_MODEL` | `gemini-2.0-flash-exp` | AI model for images |
 | `HF_TOKEN` | — | HuggingFace API token (fallback provider) |
-| `KP_HF_TEXT_MODEL` | `mistralai/Mistral-Small-24B-Instruct-2501` | HF text model for poems |
+| `KP_HF_TEXT_MODEL` | `mistralai/Mistral-7B-Instruct-v0.3` | HF text model for poems |
 | `KP_HF_IMAGE_MODEL` | `stabilityai/stable-diffusion-xl-base-1.0` | HF image model (SDXL) |
 | `KP_VEO_ENABLED` | `true` | Enable Veo animated clips |
 | `KP_VEO_MODEL` | `veo-3.1-generate-preview` | Veo model |

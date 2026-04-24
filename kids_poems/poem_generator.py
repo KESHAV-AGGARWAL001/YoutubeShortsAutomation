@@ -27,21 +27,18 @@ from google import genai
 client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 FALLBACK_MODEL = "gemini-2.0-flash"
 
-HF_API_URL = "https://api-inference.huggingface.co/models/"
+HF_ROUTER_URL = "https://router.huggingface.co/v1/chat/completions"
 
 
 def ask_huggingface(prompt, model=None):
-    """Call HuggingFace Inference API as fallback."""
+    """Call HuggingFace chat completions API as fallback."""
     model = model or HF_TEXT_MODEL
-    url = f"{HF_API_URL}{model}"
 
     payload = json.dumps({
-        "inputs": prompt,
-        "parameters": {
-            "max_new_tokens": 1024,
-            "temperature": 0.7,
-            "return_full_text": False,
-        },
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": 2048,
+        "temperature": 0.7,
     }).encode()
 
     headers = {
@@ -57,22 +54,20 @@ def ask_huggingface(prompt, model=None):
                 print(f"  HF retry {attempt}/2 — waiting {wait}s...")
                 time.sleep(wait)
 
-            req = urllib.request.Request(url, data=payload, headers=headers)
+            req = urllib.request.Request(HF_ROUTER_URL, data=payload, headers=headers)
             with urllib.request.urlopen(req, timeout=120) as resp:
                 result = json.loads(resp.read().decode())
 
-            if isinstance(result, list) and result:
-                text = result[0].get("generated_text", "")
-            elif isinstance(result, dict):
-                text = result.get("generated_text", "") or result.get("error", "")
-                if "error" in result and "loading" in result.get("error", "").lower():
+            if "error" in result:
+                err_msg = result.get("error", "")
+                if "loading" in err_msg.lower():
                     print(f"  Model loading — waiting 30s...")
                     time.sleep(30)
                     continue
-            else:
-                text = str(result)
+                raise RuntimeError(f"HF error: {err_msg}")
 
-            text = text.strip()
+            text = result["choices"][0]["message"]["content"].strip()
+
             if "```json" in text:
                 text = text.split("```json")[1].split("```")[0].strip()
             elif "```" in text:
