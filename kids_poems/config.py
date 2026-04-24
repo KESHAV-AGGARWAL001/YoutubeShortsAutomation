@@ -34,9 +34,12 @@ GEMINI_API_KEY = os.getenv("KP_GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
 GEMINI_MODEL = os.getenv("KP_GEMINI_MODEL", "gemini-2.5-pro")
 GEMINI_IMAGE_MODEL = os.getenv("KP_GEMINI_IMAGE_MODEL", "gemini-2.0-flash-exp")
 
-# ── HuggingFace Fallback ─────────────────────────
+# ── Groq (text fallback — free, 1000 req/day) ───
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_MODEL = os.getenv("KP_GROQ_MODEL", "llama-3.1-8b-instant")
+
+# ── HuggingFace (image fallback only) ────────────
 HF_TOKEN = os.getenv("HF_TOKEN", "")
-HF_TEXT_MODEL = os.getenv("KP_HF_TEXT_MODEL", "mistralai/Mistral-7B-Instruct-v0.3")
 HF_IMAGE_MODEL = os.getenv("KP_HF_IMAGE_MODEL", "stabilityai/stable-diffusion-xl-base-1.0")
 
 # ── Veo Video Generation (Google AI Pro) ─────────

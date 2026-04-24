@@ -57,7 +57,7 @@
 | Tool | Purpose | Cost |
 |------|---------|------|
 | Gemini 2.5 Pro | Poem generation + SEO (primary) | Free (AI Pro) |
-| HuggingFace Mistral | Poem generation (fallback when Gemini overloaded) | Free |
+| Groq (Llama 3.1 8B) | Poem generation (fallback when Gemini overloaded) | Free (1,000 req/day) |
 | Veo 3.1 | Animated cartoon clips per verse | ~$2-4/day (AI Pro) |
 | Gemini 2.0 Flash | Image generation (primary) | Free |
 | HuggingFace SDXL | Image generation (fallback when Gemini overloaded) | Free |
@@ -76,7 +76,7 @@
 The pipeline automatically switches providers when one is overloaded. No manual intervention needed.
 
 ```
-Poem Generation:    Gemini 2.5 Pro → Gemini 2.0 Flash → HuggingFace (Mistral)
+Poem Generation:    Gemini 2.5 Pro → Gemini 2.0 Flash → Groq (Llama 3.1 8B)
 Image Generation:   Gemini 2.0 Flash → HuggingFace (Stable Diffusion XL) → local assets/images/
 Video Clips:        Veo 3.1 → Veo 3.1 Lite → static image + Ken Burns
 ```
@@ -84,10 +84,22 @@ Video Clips:        Veo 3.1 → Veo 3.1 Lite → static image + Ken Burns
 | Provider | Models Used | When It Kicks In |
 |----------|------------|-----------------|
 | **Gemini (primary)** | `gemini-2.5-pro` for poems, `gemini-2.0-flash-exp` for images | Always tried first |
-| **HuggingFace (fallback)** | `Mistral-7B-Instruct-v0.3` for poems, `stable-diffusion-xl` for images | When Gemini returns 429/overloaded/quota errors |
+| **Groq (text fallback)** | `llama-3.1-8b-instant` for poems | When Gemini returns 429/overloaded/quota errors |
+| **HuggingFace (image fallback)** | `stable-diffusion-xl` for images | When Gemini image generation fails |
 | **Local assets (last resort)** | Pre-downloaded images from `assets/images/` | When both AI providers fail |
 
-### HuggingFace Setup (One-Time)
+### Groq Setup (One-Time)
+
+1. Create a free account at https://console.groq.com (no credit card needed)
+2. Create an API key from the dashboard
+3. Add to `kids_poems/.env`:
+   ```
+   GROQ_API_KEY=gsk_your_groq_api_key_here
+   ```
+
+**Free tier limits:** 1,000 requests/day, 30 requests/min — more than enough for 3 videos/day (~15-20 text calls).
+
+### HuggingFace Setup (One-Time — Images Only)
 
 1. Create a free account at https://huggingface.co/
 2. Get your access token at https://huggingface.co/settings/tokens (read access is enough)
@@ -96,14 +108,13 @@ Video Clips:        Veo 3.1 → Veo 3.1 Lite → static image + Ken Burns
    HF_TOKEN=hf_your_token_here
    ```
 
-Both HuggingFace models are completely free — no subscription, no credit card, no limits for basic usage.
-
 ### How the Fallback Works
 
-- Gemini overloaded? → Pipeline prints "switching to HuggingFace" and continues automatically
-- HuggingFace model loading? → Waits 30 seconds, retries up to 3 times
-- Both providers down? → Falls back to local images from `assets/images/`
-- The `_gemini_failed` flag persists within a single run — once Gemini fails, all remaining images use HuggingFace (avoids wasting time on repeated 429 errors)
+- Gemini overloaded? → Pipeline prints "switching to Groq" and continues automatically
+- Groq rate limited? → Retries with exponential backoff (3 attempts)
+- Both providers down? → Pipeline fails with clear error message
+- For images: Gemini fails → HuggingFace SDXL → local assets/images/
+- The `_gemini_failed` flag persists within a single run — once Gemini fails for images, all remaining images use HuggingFace (avoids wasting time on repeated 429 errors)
 
 ---
 
@@ -545,8 +556,9 @@ These are independent auth flows — Gemini API key generates the content, YouTu
 | `KP_MUSIC_VOLUME` | `0.20` | Background music volume |
 | `KP_GEMINI_MODEL` | `gemini-2.5-pro` | AI model for poems |
 | `KP_GEMINI_IMAGE_MODEL` | `gemini-2.0-flash-exp` | AI model for images |
-| `HF_TOKEN` | — | HuggingFace API token (fallback provider) |
-| `KP_HF_TEXT_MODEL` | `mistralai/Mistral-7B-Instruct-v0.3` | HF text model for poems |
+| `GROQ_API_KEY` | — | Groq API key (text fallback — free, 1000 req/day) |
+| `KP_GROQ_MODEL` | `llama-3.1-8b-instant` | Groq model for poems |
+| `HF_TOKEN` | — | HuggingFace API token (image fallback only) |
 | `KP_HF_IMAGE_MODEL` | `stabilityai/stable-diffusion-xl-base-1.0` | HF image model (SDXL) |
 | `KP_VEO_ENABLED` | `true` | Enable Veo animated clips |
 | `KP_VEO_MODEL` | `veo-3.1-generate-preview` | Veo model |

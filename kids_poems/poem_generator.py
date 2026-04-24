@@ -2,9 +2,9 @@
 poem_generator.py — AI Poem + SEO Generator for Kids Channel
 
 Uses Gemini to generate original children's poems.
-Falls back to HuggingFace if Gemini is overloaded.
+Falls back to Groq if Gemini is overloaded.
 
-Fallback chain: Gemini Pro → Gemini Flash → HuggingFace
+Fallback chain: Gemini Pro → Gemini Flash → Groq (Llama 3.1 8B)
 """
 
 import os
@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import (
     GEMINI_API_KEY, GEMINI_MODEL, POEM_CATEGORIES, OUTPUT_FOLDER,
     POEMS_FOLDER, DEFAULT_TAGS, CHANNEL_NAME,
-    HF_TOKEN, HF_TEXT_MODEL,
+    GROQ_API_KEY, GROQ_MODEL,
 )
 
 from google import genai
@@ -27,12 +27,12 @@ from google import genai
 client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 FALLBACK_MODEL = "gemini-2.0-flash"
 
-HF_ROUTER_URL = "https://router.huggingface.co/v1/chat/completions"
+GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 
-def ask_huggingface(prompt, model=None):
-    """Call HuggingFace chat completions API as fallback."""
-    model = model or HF_TEXT_MODEL
+def ask_groq(prompt, model=None):
+    """Call Groq chat completions API as fallback."""
+    model = model or GROQ_MODEL
 
     payload = json.dumps({
         "model": model,
@@ -42,29 +42,26 @@ def ask_huggingface(prompt, model=None):
     }).encode()
 
     headers = {
-        "Authorization": f"Bearer {HF_TOKEN}",
+        "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type": "application/json",
-        "User-Agent": "LittleStarFactory/1.0",
     }
 
     for attempt in range(3):
         try:
             if attempt > 0:
                 wait = 10 * attempt
-                print(f"  HF retry {attempt}/2 — waiting {wait}s...")
+                print(f"  Groq retry {attempt}/2 — waiting {wait}s...")
                 time.sleep(wait)
 
-            req = urllib.request.Request(HF_ROUTER_URL, data=payload, headers=headers)
+            req = urllib.request.Request(GROQ_API_URL, data=payload, headers=headers)
             with urllib.request.urlopen(req, timeout=120) as resp:
                 result = json.loads(resp.read().decode())
 
             if "error" in result:
-                err_msg = result.get("error", "")
-                if "loading" in err_msg.lower():
-                    print(f"  Model loading — waiting 30s...")
-                    time.sleep(30)
-                    continue
-                raise RuntimeError(f"HF error: {err_msg}")
+                err_msg = result.get("error", {})
+                if isinstance(err_msg, dict):
+                    err_msg = err_msg.get("message", str(err_msg))
+                raise RuntimeError(f"Groq error: {err_msg}")
 
             text = result["choices"][0]["message"]["content"].strip()
 
@@ -87,11 +84,11 @@ def ask_huggingface(prompt, model=None):
                 continue
             raise
 
-    raise RuntimeError("HuggingFace API failed after 3 attempts")
+    raise RuntimeError("Groq API failed after 3 attempts")
 
 
 def ask_gemini(prompt, model=None):
-    """Call Gemini API with retry, then fall back to HuggingFace."""
+    """Call Gemini API with retry, then fall back to Groq."""
     model = model or GEMINI_MODEL
 
     if client:
@@ -116,17 +113,17 @@ def ask_gemini(prompt, model=None):
                 if any(k in err for k in ["429", "overloaded", "resource", "quota", "rate"]):
                     if attempt < 3:
                         continue
-                    print(f"  Gemini overloaded — switching to HuggingFace...")
+                    print(f"  Gemini overloaded — switching to Groq...")
                     break
                 raise
 
-    if HF_TOKEN:
-        print(f"  Using HuggingFace: {HF_TEXT_MODEL}")
-        return ask_huggingface(prompt)
+    if GROQ_API_KEY:
+        print(f"  Using Groq: {GROQ_MODEL}")
+        return ask_groq(prompt)
 
     raise RuntimeError(
-        "Both Gemini and HuggingFace unavailable. "
-        "Set KP_GEMINI_API_KEY or HF_TOKEN in kids_poems/.env"
+        "Both Gemini and Groq unavailable. "
+        "Set KP_GEMINI_API_KEY or GROQ_API_KEY in kids_poems/.env"
     )
 
 
