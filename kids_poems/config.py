@@ -32,7 +32,7 @@ MUSIC_VOLUME = float(os.getenv("KP_MUSIC_VOLUME", "0.20"))
 # ── Gemini Settings ───────────────────────────────────
 GEMINI_API_KEY = os.getenv("KP_GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
 GEMINI_MODEL = os.getenv("KP_GEMINI_MODEL", "gemini-2.5-pro")
-GEMINI_IMAGE_MODEL = os.getenv("KP_GEMINI_IMAGE_MODEL", "gemini-2.0-flash-exp")
+GEMINI_IMAGE_MODEL = os.getenv("KP_GEMINI_IMAGE_MODEL", "gemini-2.5-flash-image")
 
 # ── Groq (text fallback — free, 1000 req/day) ───
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
@@ -43,7 +43,7 @@ HF_TOKEN = os.getenv("HF_TOKEN", "")
 HF_IMAGE_MODEL = os.getenv("KP_HF_IMAGE_MODEL", "stabilityai/stable-diffusion-xl-base-1.0")
 
 # ── Veo Video Generation (Google AI Pro) ─────────
-VEO_ENABLED = os.getenv("KP_VEO_ENABLED", "true").lower() == "true"
+VEO_ENABLED = os.getenv("KP_VEO_ENABLED", "false").lower() == "true"
 VEO_MODEL = os.getenv("KP_VEO_MODEL", "veo-3.1-generate-preview")
 VEO_LITE_MODEL = "veo-3.1-lite-generate-preview"
 VEO_USE_LITE = os.getenv("KP_VEO_USE_LITE", "false").lower() == "true"

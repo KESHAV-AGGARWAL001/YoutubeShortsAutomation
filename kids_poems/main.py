@@ -9,8 +9,8 @@ Usage:
   python main.py --no-upload  # Generate only, skip upload
 
 Pipeline:
-  1. Gemini generates original poem + visual descriptions + SEO
-  2. Gemini generates colorful illustrations per verse
+  1. Groq generates original poem + visual descriptions + SEO
+  2. Gemini (Nano Banana) generates colorful illustrations per verse
   3. Edge TTS creates warm child-friendly voiceover
   4. FFmpeg builds Ken Burns slideshow from images
   5. FFmpeg burns colorful subtitles + mixes music
