@@ -63,7 +63,6 @@ def generate_video_clip(visual_description, output_path, duration_seconds=4, ind
                         number_of_videos=1,
                         duration_seconds=duration_seconds,
                         aspect_ratio="9:16",
-                        person_generation="dont_allow",
                     ),
                 )
 
