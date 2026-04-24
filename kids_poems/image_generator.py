@@ -36,7 +36,7 @@ def _generate_image_hf(prompt, output_path, index=0):
     headers = {
         "Authorization": f"Bearer {HF_TOKEN}",
         "Content-Type": "application/json",
-        "User-Agent": "LittleStarFactory/1.0",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     }
 
     for attempt in range(3):

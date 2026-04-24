@@ -16,7 +16,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import (
     GEMINI_API_KEY, VEO_MODEL, VEO_LITE_MODEL, VEO_USE_LITE,
-    VEO_TIMEOUT, VEO_ENHANCE_PROMPT, VEO_MAX_WORKERS,
+    VEO_TIMEOUT, VEO_MAX_WORKERS,
     OUTPUT_FOLDER,
 )
 
@@ -63,7 +63,6 @@ def generate_video_clip(visual_description, output_path, duration_seconds=4, ind
                         number_of_videos=1,
                         duration_seconds=duration_seconds,
                         aspect_ratio="9:16",
-                        enhance_prompt=VEO_ENHANCE_PROMPT,
                         person_generation="dont_allow",
                     ),
                 )
