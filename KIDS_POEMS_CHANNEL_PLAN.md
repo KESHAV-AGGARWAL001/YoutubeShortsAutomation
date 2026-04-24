@@ -56,11 +56,14 @@
 
 | Tool | Purpose | Cost |
 |------|---------|------|
-| Gemini 2.5 Flash | Poem generation + SEO | Free |
+| Gemini 2.5 Pro | Poem generation + SEO (primary) | Free (AI Pro) |
+| HuggingFace Mistral | Poem generation (fallback when Gemini overloaded) | Free |
 | Veo 3.1 | Animated cartoon clips per verse | ~$2-4/day (AI Pro) |
-| Gemini 2.0 Flash | Fallback image generation | Free |
+| Gemini 2.0 Flash | Image generation (primary) | Free |
+| HuggingFace SDXL | Image generation (fallback when Gemini overloaded) | Free |
 | Edge TTS | Warm child-friendly voiceover | Free |
-| YouTube Audio Library | Background music (mood-organized) | Free |
+| Freesound.org | Background music — CC0 license (auto-download) | Free |
+| YouTube Audio Library | Background music (manual download alternative) | Free |
 | FFmpeg | Video/audio processing | Free |
 | YouTube Data API v3 | Upload + scheduling | Free |
 
@@ -68,18 +71,54 @@
 
 ---
 
+## AI Fallback Chain — Never Stuck on Traffic
+
+The pipeline automatically switches providers when one is overloaded. No manual intervention needed.
+
+```
+Poem Generation:    Gemini 2.5 Pro → Gemini 2.0 Flash → HuggingFace (Mistral)
+Image Generation:   Gemini 2.0 Flash → HuggingFace (Stable Diffusion XL) → local assets/images/
+Video Clips:        Veo 3.1 → Veo 3.1 Lite → static image + Ken Burns
+```
+
+| Provider | Models Used | When It Kicks In |
+|----------|------------|-----------------|
+| **Gemini (primary)** | `gemini-2.5-pro` for poems, `gemini-2.0-flash-exp` for images | Always tried first |
+| **HuggingFace (fallback)** | `Mistral-Small-24B` for poems, `stable-diffusion-xl` for images | When Gemini returns 429/overloaded/quota errors |
+| **Local assets (last resort)** | Pre-downloaded images from `assets/images/` | When both AI providers fail |
+
+### HuggingFace Setup (One-Time)
+
+1. Create a free account at https://huggingface.co/
+2. Get your access token at https://huggingface.co/settings/tokens (read access is enough)
+3. Add to `kids_poems/.env`:
+   ```
+   HF_TOKEN=hf_your_token_here
+   ```
+
+Both HuggingFace models are completely free — no subscription, no credit card, no limits for basic usage.
+
+### How the Fallback Works
+
+- Gemini overloaded? → Pipeline prints "switching to HuggingFace" and continues automatically
+- HuggingFace model loading? → Waits 30 seconds, retries up to 3 times
+- Both providers down? → Falls back to local images from `assets/images/`
+- The `_gemini_failed` flag persists within a single run — once Gemini fails, all remaining images use HuggingFace (avoids wasting time on repeated 429 errors)
+
+---
+
 ## Google AI Pro Benefits — How We Use Them
 
 | AI Pro Feature | How We Use It |
 |---|---|
-| **Gemini 2.5 Flash** | Generate original poems + visual descriptions + SEO metadata |
+| **Gemini 2.5 Pro** | Generate original poems + visual descriptions + SEO metadata |
 | **Veo 3.1** | Generate animated cartoon clips per verse (primary visual pipeline) |
 | **Veo 3.1 Lite** | Fallback model if Veo 3.1 fails (half cost) |
 | **Google AI Studio** | Higher API limits for batch production (3 videos/day) |
 | **5 TB Storage** | Archive all generated assets + videos |
 | **1,000 AI Credits** | Overflow capacity for heavy generation weeks |
 
-**Not using AI Pro for music** — YouTube Audio Library (free, copyright-safe) organized by mood folders.
+**Not using AI Pro for music** — Freesound.org (CC0, auto-download) + YouTube Audio Library (manual).
 
 ---
 
@@ -504,8 +543,11 @@ These are independent auth flows — Gemini API key generates the content, YouTu
 | `KP_TTS_PITCH` | `+3Hz` | Pitch adjustment |
 | `KP_IMAGES_PER_VIDEO` | `6` | Images per slideshow |
 | `KP_MUSIC_VOLUME` | `0.20` | Background music volume |
-| `KP_GEMINI_MODEL` | `gemini-2.5-flash` | AI model for poems |
+| `KP_GEMINI_MODEL` | `gemini-2.5-pro` | AI model for poems |
 | `KP_GEMINI_IMAGE_MODEL` | `gemini-2.0-flash-exp` | AI model for images |
+| `HF_TOKEN` | — | HuggingFace API token (fallback provider) |
+| `KP_HF_TEXT_MODEL` | `mistralai/Mistral-Small-24B-Instruct-2501` | HF text model for poems |
+| `KP_HF_IMAGE_MODEL` | `stabilityai/stable-diffusion-xl-base-1.0` | HF image model (SDXL) |
 | `KP_VEO_ENABLED` | `true` | Enable Veo animated clips |
 | `KP_VEO_MODEL` | `veo-3.1-generate-preview` | Veo model |
 | `KP_VEO_USE_LITE` | `false` | Use Veo Lite as fallback |
