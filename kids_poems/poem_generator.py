@@ -12,6 +12,7 @@ import random
 import time
 import urllib.request
 import urllib.parse
+import urllib.error
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import (
@@ -78,6 +79,12 @@ def ask_groq(prompt, model=None):
 
             return text
 
+        except urllib.error.HTTPError as e:
+            body = e.read().decode() if e.fp else ""
+            print(f"  Groq HTTP {e.code}: {body[:300]}")
+            if attempt < 2:
+                continue
+            raise RuntimeError(f"Groq API error {e.code}: {body[:300]}")
         except Exception as e:
             if attempt < 2:
                 continue
