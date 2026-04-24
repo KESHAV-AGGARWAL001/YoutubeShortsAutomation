@@ -1,10 +1,8 @@
 """
 poem_generator.py — AI Poem + SEO Generator for Kids Channel
 
-Uses Gemini to generate original children's poems.
-Falls back to Groq if Gemini is overloaded.
-
-Fallback chain: Gemini Pro → Gemini Flash → Groq (Llama 3.1 8B)
+Uses Groq (Llama 3.1 8B) to generate original children's poems.
+Free, fast, and reliable — 1,000 requests/day.
 """
 
 import os
@@ -17,22 +15,23 @@ import urllib.parse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import (
-    GEMINI_API_KEY, GEMINI_MODEL, POEM_CATEGORIES, OUTPUT_FOLDER,
+    POEM_CATEGORIES, OUTPUT_FOLDER,
     POEMS_FOLDER, DEFAULT_TAGS, CHANNEL_NAME,
     GROQ_API_KEY, GROQ_MODEL,
 )
-
-from google import genai
-
-client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
-FALLBACK_MODEL = "gemini-2.0-flash"
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 
 def ask_groq(prompt, model=None):
-    """Call Groq chat completions API as fallback."""
+    """Call Groq chat completions API for poem generation."""
     model = model or GROQ_MODEL
+
+    if not GROQ_API_KEY:
+        raise RuntimeError(
+            "GROQ_API_KEY not set. "
+            "Get a free key at https://console.groq.com and add to kids_poems/.env"
+        )
 
     payload = json.dumps({
         "model": model,
@@ -87,46 +86,6 @@ def ask_groq(prompt, model=None):
     raise RuntimeError("Groq API failed after 3 attempts")
 
 
-def ask_gemini(prompt, model=None):
-    """Call Gemini API with retry, then fall back to Groq."""
-    model = model or GEMINI_MODEL
-
-    if client:
-        for attempt in range(4):
-            use_model = model if attempt < 3 else FALLBACK_MODEL
-            try:
-                if attempt > 0:
-                    wait = min(2 ** attempt * 5, 60)
-                    print(f"  Retry {attempt}/3 — waiting {wait}s... (model: {use_model})")
-                    time.sleep(wait)
-                response = client.models.generate_content(
-                    model=use_model, contents=prompt
-                )
-                text = response.text.strip()
-                if "```json" in text:
-                    text = text.split("```json")[1].split("```")[0].strip()
-                elif "```" in text:
-                    text = text.split("```")[1].split("```")[0].strip()
-                return text
-            except Exception as e:
-                err = str(e).lower()
-                if any(k in err for k in ["429", "overloaded", "resource", "quota", "rate"]):
-                    if attempt < 3:
-                        continue
-                    print(f"  Gemini overloaded — switching to Groq...")
-                    break
-                raise
-
-    if GROQ_API_KEY:
-        print(f"  Using Groq: {GROQ_MODEL}")
-        return ask_groq(prompt)
-
-    raise RuntimeError(
-        "Both Gemini and Groq unavailable. "
-        "Set KP_GEMINI_API_KEY or GROQ_API_KEY in kids_poems/.env"
-    )
-
-
 def sanitize_json(text):
     result = []
     in_str = False
@@ -167,7 +126,7 @@ def parse_json_safe(text, retries=2, prompt=None):
         except json.JSONDecodeError:
             if retries > 0 and prompt:
                 print(f"  Retrying JSON parse... ({retries} left)")
-                new_text = ask_gemini(prompt)
+                new_text = ask_groq(prompt)
                 return parse_json_safe(new_text, retries - 1, prompt)
             raise ValueError(f"Failed to parse JSON:\n{text[:300]}")
 
@@ -223,7 +182,7 @@ Respond ONLY in this exact JSON:
 
 ONLY JSON. No other text."""
 
-    text = ask_gemini(prompt)
+    text = ask_groq(prompt)
     data = parse_json_safe(text, retries=2, prompt=prompt)
 
     # Inject subscribe CTA + default tags
@@ -254,7 +213,7 @@ ONLY JSON. No other text."""
 
 def main():
     print("=" * 50)
-    print(f"  Kids Poem Generator — {GEMINI_MODEL}")
+    print(f"  Kids Poem Generator — Groq ({GROQ_MODEL})")
     print("=" * 50)
 
     os.makedirs(OUTPUT_FOLDER, exist_ok=True)
