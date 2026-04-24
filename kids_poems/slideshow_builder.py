@@ -80,7 +80,10 @@ def build_slideshow(image_paths, output_path=None, target_duration=None, timings
         y_expr = f"ih/2-(ih/({zoom_expr}))/2"
 
         filter_parts.append(
-            f"[{i}:v]scale={VIDEO_WIDTH * 2}:{VIDEO_HEIGHT * 2},"
+            f"[{i}:v]format=rgb24,"
+            f"scale={VIDEO_WIDTH * 2}:{VIDEO_HEIGHT * 2}:"
+            f"force_original_aspect_ratio=decrease:flags=lanczos,"
+            f"pad={VIDEO_WIDTH * 2}:{VIDEO_HEIGHT * 2}:(ow-iw)/2:(oh-ih)/2:color=black,"
             f"zoompan=z='{zoom_expr}':x='{x_expr}':y='{y_expr}':"
             f"d={int(dur * VIDEO_FPS)}:s={VIDEO_WIDTH}x{VIDEO_HEIGHT}:"
             f"fps={VIDEO_FPS},"

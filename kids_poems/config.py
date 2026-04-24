@@ -40,7 +40,7 @@ GROQ_MODEL = os.getenv("KP_GROQ_MODEL", "llama-3.1-8b-instant")
 
 # ── HuggingFace (image fallback only) ────────────
 HF_TOKEN = os.getenv("HF_TOKEN", "")
-HF_IMAGE_MODEL = os.getenv("KP_HF_IMAGE_MODEL", "stabilityai/stable-diffusion-xl-base-1.0")
+HF_IMAGE_MODEL = os.getenv("KP_HF_IMAGE_MODEL", "black-forest-labs/FLUX.1-schnell")
 
 # ── Veo Video Generation (Google AI Pro) ─────────
 VEO_ENABLED = os.getenv("KP_VEO_ENABLED", "false").lower() == "true"
