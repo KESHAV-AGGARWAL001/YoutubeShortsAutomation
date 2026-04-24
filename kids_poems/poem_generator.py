@@ -1,11 +1,10 @@
 """
 poem_generator.py — AI Poem + SEO Generator for Kids Channel
 
-Uses Gemini to generate original children's poems with:
-  - Age-appropriate language (2-6 years)
-  - Rhyming structure
-  - Per-verse visual descriptions (for image generation)
-  - YouTube SEO (title, description, tags)
+Uses Gemini to generate original children's poems.
+Falls back to HuggingFace if Gemini is overloaded.
+
+Fallback chain: Gemini Pro → Gemini Flash → HuggingFace
 """
 
 import os
@@ -13,43 +12,127 @@ import sys
 import json
 import random
 import time
+import urllib.request
+import urllib.parse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import (
     GEMINI_API_KEY, GEMINI_MODEL, POEM_CATEGORIES, OUTPUT_FOLDER,
     POEMS_FOLDER, DEFAULT_TAGS, CHANNEL_NAME,
+    HF_TOKEN, HF_TEXT_MODEL,
 )
 
 from google import genai
 
-client = genai.Client(api_key=GEMINI_API_KEY)
+client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 FALLBACK_MODEL = "gemini-2.0-flash"
 
+HF_API_URL = "https://api-inference.huggingface.co/models/"
 
-def ask_gemini(prompt, model=None):
-    model = model or GEMINI_MODEL
-    for attempt in range(4):
-        use_model = model if attempt < 3 else FALLBACK_MODEL
+
+def ask_huggingface(prompt, model=None):
+    """Call HuggingFace Inference API as fallback."""
+    model = model or HF_TEXT_MODEL
+    url = f"{HF_API_URL}{model}"
+
+    payload = json.dumps({
+        "inputs": prompt,
+        "parameters": {
+            "max_new_tokens": 1024,
+            "temperature": 0.7,
+            "return_full_text": False,
+        },
+    }).encode()
+
+    headers = {
+        "Authorization": f"Bearer {HF_TOKEN}",
+        "Content-Type": "application/json",
+        "User-Agent": "LittleStarFactory/1.0",
+    }
+
+    for attempt in range(3):
         try:
             if attempt > 0:
-                wait = min(2 ** attempt * 5, 60)
-                print(f"  Retry {attempt}/3 — waiting {wait}s... (model: {use_model})")
+                wait = 10 * attempt
+                print(f"  HF retry {attempt}/2 — waiting {wait}s...")
                 time.sleep(wait)
-            response = client.models.generate_content(
-                model=use_model, contents=prompt
-            )
-            text = response.text.strip()
+
+            req = urllib.request.Request(url, data=payload, headers=headers)
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                result = json.loads(resp.read().decode())
+
+            if isinstance(result, list) and result:
+                text = result[0].get("generated_text", "")
+            elif isinstance(result, dict):
+                text = result.get("generated_text", "") or result.get("error", "")
+                if "error" in result and "loading" in result.get("error", "").lower():
+                    print(f"  Model loading — waiting 30s...")
+                    time.sleep(30)
+                    continue
+            else:
+                text = str(result)
+
+            text = text.strip()
             if "```json" in text:
                 text = text.split("```json")[1].split("```")[0].strip()
             elif "```" in text:
                 text = text.split("```")[1].split("```")[0].strip()
+
+            if text.startswith("{"):
+                return text
+
+            json_start = text.find("{")
+            if json_start >= 0:
+                return text[json_start:]
+
             return text
+
         except Exception as e:
-            err = str(e).lower()
-            if any(k in err for k in ["429", "overloaded", "resource", "quota", "rate"]):
-                if attempt < 3:
-                    continue
+            if attempt < 2:
+                continue
             raise
+
+    raise RuntimeError("HuggingFace API failed after 3 attempts")
+
+
+def ask_gemini(prompt, model=None):
+    """Call Gemini API with retry, then fall back to HuggingFace."""
+    model = model or GEMINI_MODEL
+
+    if client:
+        for attempt in range(4):
+            use_model = model if attempt < 3 else FALLBACK_MODEL
+            try:
+                if attempt > 0:
+                    wait = min(2 ** attempt * 5, 60)
+                    print(f"  Retry {attempt}/3 — waiting {wait}s... (model: {use_model})")
+                    time.sleep(wait)
+                response = client.models.generate_content(
+                    model=use_model, contents=prompt
+                )
+                text = response.text.strip()
+                if "```json" in text:
+                    text = text.split("```json")[1].split("```")[0].strip()
+                elif "```" in text:
+                    text = text.split("```")[1].split("```")[0].strip()
+                return text
+            except Exception as e:
+                err = str(e).lower()
+                if any(k in err for k in ["429", "overloaded", "resource", "quota", "rate"]):
+                    if attempt < 3:
+                        continue
+                    print(f"  Gemini overloaded — switching to HuggingFace...")
+                    break
+                raise
+
+    if HF_TOKEN:
+        print(f"  Using HuggingFace: {HF_TEXT_MODEL}")
+        return ask_huggingface(prompt)
+
+    raise RuntimeError(
+        "Both Gemini and HuggingFace unavailable. "
+        "Set KP_GEMINI_API_KEY or HF_TOKEN in kids_poems/.env"
+    )
 
 
 def sanitize_json(text):

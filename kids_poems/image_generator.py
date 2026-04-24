@@ -1,9 +1,8 @@
 """
 image_generator.py — AI Image Generator for Kids Poems
 
-Generates one colorful illustration per poem line using Gemini's
-image generation capabilities. Falls back to picking from a
-pre-existing image folder if generation fails.
+Generates one colorful illustration per poem line.
+Fallback chain: Gemini → HuggingFace (Stable Diffusion) → local assets/images/
 """
 
 import os
@@ -11,21 +10,71 @@ import sys
 import json
 import base64
 import random
+import time
+import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import (
     GEMINI_API_KEY, GEMINI_IMAGE_MODEL, IMAGE_FOLDER, OUTPUT_FOLDER,
-    SUPPORTED_IMAGE_FORMATS,
+    SUPPORTED_IMAGE_FORMATS, HF_TOKEN, HF_IMAGE_MODEL,
 )
 
 from google import genai
 from google.genai import types
 
-client = genai.Client(api_key=GEMINI_API_KEY)
+client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
+
+HF_API_URL = "https://api-inference.huggingface.co/models/"
+_gemini_failed = False
+
+
+def _generate_image_hf(prompt, output_path, index=0):
+    """Generate image using HuggingFace Stable Diffusion as fallback."""
+    url = f"{HF_API_URL}{HF_IMAGE_MODEL}"
+
+    payload = json.dumps({"inputs": prompt}).encode()
+    headers = {
+        "Authorization": f"Bearer {HF_TOKEN}",
+        "Content-Type": "application/json",
+        "User-Agent": "LittleStarFactory/1.0",
+    }
+
+    for attempt in range(3):
+        try:
+            if attempt > 0:
+                time.sleep(10 * attempt)
+
+            req = urllib.request.Request(url, data=payload, headers=headers)
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                content_type = resp.headers.get("Content-Type", "")
+
+                if "image" in content_type:
+                    with open(output_path, "wb") as f:
+                        f.write(resp.read())
+                    size_kb = os.path.getsize(output_path) / 1024
+                    print(f"    Image {index + 1} (HF): {size_kb:.0f}KB")
+                    return True
+
+                body = resp.read().decode()
+                result = json.loads(body)
+                if "error" in result and "loading" in result["error"].lower():
+                    print(f"    HF model loading — waiting 30s...")
+                    time.sleep(30)
+                    continue
+                print(f"    HF error: {result.get('error', 'unknown')}")
+
+        except Exception as e:
+            if attempt < 2:
+                continue
+            print(f"    HF image failed: {e}")
+
+    return False
 
 
 def generate_image(visual_description, output_path, index=0):
-    """Generate a single image from a visual description using Gemini."""
+    """Generate a single image. Tries Gemini first, then HuggingFace."""
+    global _gemini_failed
+
     prompt = (
         f"Create a children's book illustration: {visual_description}. "
         f"Style: cute cartoon, bright vivid colors, simple shapes, "
@@ -33,32 +82,42 @@ def generate_image(visual_description, output_path, index=0):
         f"high quality digital art, 2D illustration."
     )
 
-    try:
-        response = client.models.generate_content(
-            model=GEMINI_IMAGE_MODEL,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_modalities=["IMAGE", "TEXT"],
-            ),
-        )
+    if client and not _gemini_failed:
+        try:
+            response = client.models.generate_content(
+                model=GEMINI_IMAGE_MODEL,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_modalities=["IMAGE", "TEXT"],
+                ),
+            )
 
-        for part in response.candidates[0].content.parts:
-            if part.inline_data and part.inline_data.mime_type.startswith("image/"):
-                img_data = part.inline_data.data
-                if isinstance(img_data, str):
-                    img_data = base64.b64decode(img_data)
-                with open(output_path, "wb") as f:
-                    f.write(img_data)
-                size_kb = os.path.getsize(output_path) / 1024
-                print(f"    Image {index + 1}: {size_kb:.0f}KB — {output_path}")
-                return True
+            for part in response.candidates[0].content.parts:
+                if part.inline_data and part.inline_data.mime_type.startswith("image/"):
+                    img_data = part.inline_data.data
+                    if isinstance(img_data, str):
+                        img_data = base64.b64decode(img_data)
+                    with open(output_path, "wb") as f:
+                        f.write(img_data)
+                    size_kb = os.path.getsize(output_path) / 1024
+                    print(f"    Image {index + 1}: {size_kb:.0f}KB")
+                    return True
 
-        print(f"    Image {index + 1}: No image in response")
-        return False
+            print(f"    Image {index + 1}: No image in Gemini response")
 
-    except Exception as e:
-        print(f"    Image {index + 1}: Generation failed — {e}")
-        return False
+        except Exception as e:
+            err = str(e).lower()
+            if any(k in err for k in ["429", "overloaded", "resource", "quota", "rate"]):
+                print(f"    Gemini overloaded — switching to HuggingFace for remaining images...")
+                _gemini_failed = True
+            else:
+                print(f"    Gemini failed: {e}")
+
+    if HF_TOKEN:
+        return _generate_image_hf(prompt, output_path, index)
+
+    print(f"    Image {index + 1}: All AI providers failed")
+    return False
 
 
 def generate_all_images(poem_data):

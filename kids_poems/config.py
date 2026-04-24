@@ -31,8 +31,13 @@ MUSIC_VOLUME = float(os.getenv("KP_MUSIC_VOLUME", "0.20"))
 
 # ── Gemini Settings ───────────────────────────────────
 GEMINI_API_KEY = os.getenv("KP_GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
-GEMINI_MODEL = os.getenv("KP_GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_MODEL = os.getenv("KP_GEMINI_MODEL", "gemini-2.5-pro")
 GEMINI_IMAGE_MODEL = os.getenv("KP_GEMINI_IMAGE_MODEL", "gemini-2.0-flash-exp")
+
+# ── HuggingFace Fallback ─────────────────────────
+HF_TOKEN = os.getenv("HF_TOKEN", "")
+HF_TEXT_MODEL = os.getenv("KP_HF_TEXT_MODEL", "mistralai/Mistral-Small-24B-Instruct-2501")
+HF_IMAGE_MODEL = os.getenv("KP_HF_IMAGE_MODEL", "stabilityai/stable-diffusion-xl-base-1.0")
 
 # ── Veo Video Generation (Google AI Pro) ─────────
 VEO_ENABLED = os.getenv("KP_VEO_ENABLED", "true").lower() == "true"
