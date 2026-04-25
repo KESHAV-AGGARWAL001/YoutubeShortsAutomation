@@ -10,7 +10,7 @@ load_dotenv()
 # Pick script version based on SCRIPT_VERSION env var
 _script_version = os.getenv("SCRIPT_VERSION", "v1").strip().lower()
 _write_script = "02_write_script_v2.py" if _script_version == "v2" else "02_write_script.py"
-_script_label = "Retention-optimized script (V2)" if _script_version == "v2" else "Finding topic + writing script (Gemini)"
+_script_label = "Retention-optimized script (V2)" if _script_version == "v2" else "Finding topic + writing script (Groq)"
 
 STEPS = [
     (_write_script,         _script_label),

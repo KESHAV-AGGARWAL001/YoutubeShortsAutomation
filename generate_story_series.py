@@ -1,7 +1,7 @@
 """
 generate_story_series.py — Multi-Part Story Series Generator
 
-Generates a 2–5 part serialized Instagram Reel story series using Gemini AI.
+Generates a 2–5 part serialized Instagram Reel story series using Groq AI.
 Each part is designed to end with a cliffhanger to drive engagement.
 
 Usage:
@@ -23,17 +23,18 @@ import sys
 import json
 import random
 import argparse
+import urllib.request
+import urllib.parse
+import urllib.error
 import time as _time
 from datetime import datetime, date, timedelta
 from dotenv import load_dotenv
-from google import genai
 
 load_dotenv()
 
-# API key is read automatically from GEMINI_API_KEY environment variable
-client = genai.Client()
-MODEL  = "gemini-2.5-flash"
-FALLBACK_MODEL = "gemini-2.0-flash"
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 SERIES_DIR  = "story_series"
 REGISTRY    = os.path.join(SERIES_DIR, "series_registry.json")
@@ -81,34 +82,54 @@ CATEGORIES = {
 
 # ── AI Generation ───────────────────────────────────────────────
 
-def ask_gemini(prompt, max_tokens=4096):
-    """Send prompt to Gemini with retry + fallback on overload."""
-    for attempt in range(4):
-        model = MODEL if attempt < 3 else FALLBACK_MODEL
+def ask_groq(prompt, max_tokens=4096):
+    """Call Groq chat completions API with retry on overload."""
+    if not GROQ_API_KEY:
+        raise RuntimeError(
+            "GROQ_API_KEY not set. Get a free key at https://console.groq.com and add to .env"
+        )
+
+    payload = json.dumps({
+        "model": GROQ_MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": max_tokens,
+        "temperature": 0.7,
+    }).encode()
+
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    }
+
+    for attempt in range(3):
         try:
             if attempt > 0:
-                wait = min(2 ** attempt * 5, 60)
-                print(f"  Retry {attempt}/3 — waiting {wait}s... (model: {model})")
+                wait = 10 * attempt
+                print(f"  Groq retry {attempt}/2 — waiting {wait}s...")
                 _time.sleep(wait)
-            response = client.models.generate_content(model=model, contents=prompt)
-            text = response.text.strip()
+
+            req = urllib.request.Request(GROQ_API_URL, data=payload, headers=headers)
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                result = json.loads(resp.read().decode())
+
+            text = result["choices"][0]["message"]["content"].strip()
             if "```json" in text:
                 text = text.split("```json")[1].split("```")[0].strip()
             elif "```" in text:
                 text = text.split("```")[1].split("```")[0].strip()
-            if attempt == 3:
-                print(f"  Fallback model ({FALLBACK_MODEL}) succeeded!")
             return text
+
+        except urllib.error.HTTPError as e:
+            if e.code in (429, 503, 500) and attempt < 2:
+                print(f"  Groq overloaded ({e.code}) — will retry...")
+                continue
+            raise
         except Exception as e:
-            err = str(e).lower()
-            if any(k in err for k in ["429", "overloaded", "resource", "quota", "rate", "unavailable", "503", "500"]):
-                if attempt < 3:
-                    print(f"  Gemini overloaded — will retry... ({e})")
-                    continue
-                else:
-                    raise
-            else:
-                raise
+            if attempt < 2:
+                print(f"  Groq error — will retry... ({e})")
+                continue
+            raise
 
 
 def parse_json_safe(text, retries=2, prompt=None):
@@ -133,13 +154,13 @@ def parse_json_safe(text, retries=2, prompt=None):
             pass
         if retries > 0 and prompt:
             print(f"  Retrying... ({retries} attempts left)")
-            new_text = ask_gemini(prompt, max_tokens=4096)
+            new_text = ask_groq(prompt, max_tokens=4096)
             return parse_json_safe(new_text, retries - 1, prompt)
         raise ValueError(f"Failed to parse JSON after retries. Raw:\n{text[:500]}")
 
 
 def generate_story(category_key, num_parts):
-    """Generate a multi-part story series using Gemini."""
+    """Generate a multi-part story series using Groq."""
     cat = CATEGORIES[category_key]
 
     prompt = f"""You are a viral Instagram Reels scriptwriter for the account @nextlevelmind_km.
@@ -188,7 +209,7 @@ Generate exactly {num_parts} parts. Only JSON output, no other text."""
     print(f"  Category: {cat['name']}")
     print(f"  Model: {MODEL}")
 
-    text   = ask_gemini(prompt, max_tokens=4096)
+    text   = ask_groq(prompt, max_tokens=4096)
     result = parse_json_safe(text, retries=2, prompt=prompt)
 
     # Validate structure

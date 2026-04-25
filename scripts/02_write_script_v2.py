@@ -4,13 +4,11 @@
 V2 improvements over v1:
   - Hook-first structure with open loops, scroll stoppers, FOMO triggers
   - Stronger loop endings that force rewatches
-  - HuggingFace Inference API support (Gemma / any model) — no GPU needed
-  - Falls back to Gemini if HuggingFace fails (or vice versa)
+  - Uses Groq (Llama 3.1 8B) — free and fast
 
 .env config:
-  AI_PROVIDER=gemini          # "gemini" (default) or "huggingface"
-  HF_TOKEN=hf_xxxxxxxx       # HuggingFace access token
-  HF_MODEL=google/gemma-3-27b-it  # Any HF model with chat support
+  GROQ_API_KEY=gsk_xxxxxxxx
+  GROQ_MODEL=llama-3.1-8b-instant
 """
 
 import os
@@ -18,6 +16,9 @@ import sys
 import re
 import json
 import random
+import urllib.request
+import urllib.parse
+import urllib.error
 from datetime import datetime
 from dotenv import load_dotenv
 import PyPDF2
@@ -40,121 +41,59 @@ import time as _time
 
 load_dotenv()
 
-# ── AI Provider Setup ────────────────────────────────────────────────
-AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini").strip().lower()
-
-# Gemini client
-_gemini_client = None
-try:
-    from google import genai
-    _gemini_client = genai.Client()
-except Exception:
-    pass
-
-GEMINI_MODEL = "gemini-2.5-flash"
-GEMINI_FALLBACK = "gemini-2.0-flash"
-
-# HuggingFace client
-_hf_client = None
-HF_MODEL = os.getenv("HF_MODEL", "google/gemma-3-27b-it")
-try:
-    from huggingface_hub import InferenceClient
-    hf_token = os.getenv("HF_TOKEN", "").strip()
-    if hf_token:
-        _hf_client = InferenceClient(token=hf_token)
-except Exception:
-    pass
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 
 def ask_ai(prompt, max_tokens=8192):
-    """
-    Route to the configured AI provider.
-    Falls back to the other provider if the primary one fails.
-    """
-    providers = []
-    if AI_PROVIDER == "huggingface" and _hf_client:
-        providers = [("huggingface", _ask_huggingface)]
-        if _gemini_client:
-            providers.append(("gemini", _ask_gemini))
-    else:
-        if _gemini_client:
-            providers = [("gemini", _ask_gemini)]
-        if _hf_client:
-            providers.append(("huggingface", _ask_huggingface))
+    """Call Groq chat completions API with retry on overload."""
+    if not GROQ_API_KEY:
+        raise RuntimeError(
+            "GROQ_API_KEY not set. Get a free key at https://console.groq.com and add to .env"
+        )
 
-    if not providers:
-        raise RuntimeError("No AI provider available. Set GEMINI_API_KEY or HF_TOKEN in .env")
+    payload = json.dumps({
+        "model": GROQ_MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": max_tokens,
+        "temperature": 0.7,
+    }).encode()
 
-    for name, fn in providers:
-        try:
-            print(f"  Using AI provider: {name}")
-            return fn(prompt, max_tokens)
-        except Exception as e:
-            print(f"  {name} failed: {e}")
-            if name != providers[-1][0]:
-                print(f"  Falling back to next provider...")
-            else:
-                raise
-
-
-def _ask_gemini(prompt, max_tokens=8192):
-    """Call Gemini with retry + fallback model."""
-    for attempt in range(4):
-        model = GEMINI_MODEL if attempt < 3 else GEMINI_FALLBACK
-        try:
-            if attempt > 0:
-                wait = min(2 ** attempt * 5, 60)
-                print(f"  Retry {attempt}/3 — waiting {wait}s... (model: {model})")
-                _time.sleep(wait)
-            response = _gemini_client.models.generate_content(model=model, contents=prompt)
-            text = response.text.strip()
-            if "```json" in text:
-                text = text.split("```json")[1].split("```")[0].strip()
-            elif "```" in text:
-                text = text.split("```")[1].split("```")[0].strip()
-            if attempt == 3:
-                print(f"  Fallback model ({GEMINI_FALLBACK}) succeeded!")
-            return text
-        except Exception as e:
-            err = str(e).lower()
-            if any(k in err for k in ["429", "overloaded", "resource", "quota", "rate", "unavailable", "503", "500"]):
-                if attempt < 3:
-                    print(f"  Gemini overloaded — will retry...")
-                    continue
-            raise
-
-
-def _ask_huggingface(prompt, max_tokens=8192):
-    """Call HuggingFace Inference API with the configured model."""
-    print(f"  HuggingFace model: {HF_MODEL}")
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    }
 
     for attempt in range(3):
         try:
             if attempt > 0:
                 wait = 10 * attempt
-                print(f"  Retry {attempt}/2 — waiting {wait}s...")
+                print(f"  Groq retry {attempt}/2 — waiting {wait}s...")
                 _time.sleep(wait)
 
-            response = _hf_client.chat_completion(
-                model=HF_MODEL,
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=max_tokens,
-            )
-            text = response.choices[0].message.content.strip()
+            print(f"  Using AI provider: groq ({GROQ_MODEL})")
+            req = urllib.request.Request(GROQ_API_URL, data=payload, headers=headers)
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                result = json.loads(resp.read().decode())
 
-            # Extract JSON from code blocks if present
+            text = result["choices"][0]["message"]["content"].strip()
             if "```json" in text:
                 text = text.split("```json")[1].split("```")[0].strip()
             elif "```" in text:
                 text = text.split("```")[1].split("```")[0].strip()
-
             return text
 
+        except urllib.error.HTTPError as e:
+            if e.code in (429, 503, 500) and attempt < 2:
+                print(f"  Groq overloaded ({e.code}) — will retry...")
+                continue
+            raise
         except Exception as e:
-            err = str(e).lower()
-            if any(k in err for k in ["429", "overloaded", "rate", "503", "500"]):
-                if attempt < 2:
-                    continue
+            if attempt < 2:
+                print(f"  Groq error — will retry... ({e})")
+                continue
             raise
 
 
@@ -606,11 +545,9 @@ Only JSON. No extra text."""
 
 
 def main():
-    provider_label = "HuggingFace" if AI_PROVIDER == "huggingface" else "Gemini"
-    model_label = HF_MODEL if AI_PROVIDER == "huggingface" else GEMINI_MODEL
     print("=" * 50)
     print("  NextLevelMind Shorts Generator — V2 Retention")
-    print(f"  AI Provider: {provider_label} ({model_label})")
+    print(f"  AI Provider: Groq ({GROQ_MODEL})")
     print("=" * 50)
 
     video_num = os.environ.get("VIDEO_NUMBER", "1")

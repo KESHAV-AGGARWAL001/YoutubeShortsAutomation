@@ -20,10 +20,12 @@ from config import (
     SUPPORTED_IMAGE_FORMATS,
 )
 
-from google import genai
-from google.genai import types
-
-client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
+try:
+    from google import genai
+    from google.genai import types
+    client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
+except ImportError:
+    client = None
 
 _gemini_failed = False
 

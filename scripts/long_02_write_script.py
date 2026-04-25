@@ -2,7 +2,7 @@
 long_02_write_script.py — Long-Form Script Generator (7-8 min videos)
 
 Reads 8-10 pages from the current book and generates a structured
-long-form script with intro, 5-7 chapters, and outro via Gemini.
+long-form script with intro, 5-7 chapters, and outro via Groq.
 
 Outputs:
   - output/sections/01_intro.txt, 02_chapter1.txt, ..., XX_outro.txt
@@ -16,9 +16,11 @@ import sys
 import re
 import json
 import random
+import urllib.request
+import urllib.parse
+import urllib.error
 from datetime import datetime
 from dotenv import load_dotenv
-from google import genai
 import PyPDF2
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -37,9 +39,10 @@ except ImportError:
 import time as _time
 
 load_dotenv()
-client = genai.Client()
-MODEL = "gemini-2.5-flash"
-FALLBACK_MODEL = "gemini-2.0-flash"
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 CORE_TAGS = [
     "motivation", "mindset", "discipline", "selfimprovement", "success",
@@ -180,39 +183,54 @@ def get_book_pages_long():
     return page_text.strip(), current_book
 
 
-def ask_gemini(prompt, max_tokens=16384):
-    """
-    Call Gemini with automatic retry + fallback model.
-    Retries 3 times with exponential backoff on overload/rate-limit errors.
-    Falls back to FALLBACK_MODEL if primary MODEL keeps failing.
-    """
-    for attempt in range(4):
-        model = MODEL if attempt < 3 else FALLBACK_MODEL
+def ask_groq(prompt, max_tokens=16384):
+    """Call Groq chat completions API with retry on overload."""
+    if not GROQ_API_KEY:
+        raise RuntimeError(
+            "GROQ_API_KEY not set. Get a free key at https://console.groq.com and add to .env"
+        )
+
+    payload = json.dumps({
+        "model": GROQ_MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": max_tokens,
+        "temperature": 0.7,
+    }).encode()
+
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    }
+
+    for attempt in range(3):
         try:
             if attempt > 0:
-                wait = min(2 ** attempt * 5, 60)
-                print(f"  Retry {attempt}/3 — waiting {wait}s... (model: {model})")
+                wait = 10 * attempt
+                print(f"  Groq retry {attempt}/2 — waiting {wait}s...")
                 _time.sleep(wait)
-            response = client.models.generate_content(model=model, contents=prompt)
-            text = response.text.strip()
+
+            req = urllib.request.Request(GROQ_API_URL, data=payload, headers=headers)
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                result = json.loads(resp.read().decode())
+
+            text = result["choices"][0]["message"]["content"].strip()
             if "```json" in text:
                 text = text.split("```json")[1].split("```")[0].strip()
             elif "```" in text:
                 text = text.split("```")[1].split("```")[0].strip()
-            if attempt == 3:
-                print(f"  Fallback model ({FALLBACK_MODEL}) succeeded!")
             return text
+
+        except urllib.error.HTTPError as e:
+            if e.code in (429, 503, 500) and attempt < 2:
+                print(f"  Groq overloaded ({e.code}) — will retry...")
+                continue
+            raise
         except Exception as e:
-            err = str(e).lower()
-            if any(k in err for k in ["429", "overloaded", "resource", "quota", "rate", "unavailable", "503", "500"]):
-                if attempt < 3:
-                    print(f"  Gemini overloaded — will retry... ({e})")
-                    continue
-                else:
-                    print(f"  Fallback model also failed — {e}")
-                    raise
-            else:
-                raise
+            if attempt < 2:
+                print(f"  Groq error — will retry... ({e})")
+                continue
+            raise
 
 
 def sanitize_json_text(text):
@@ -262,7 +280,7 @@ def parse_json_safe(text, retries_left=2, prompt=None):
             pass
         if retries_left > 0 and prompt:
             print(f"  Retrying... ({retries_left} attempts left)")
-            new_text = ask_gemini(prompt)
+            new_text = ask_groq(prompt)
             return parse_json_safe(new_text, retries_left - 1, prompt)
         raise ValueError(f"Failed to parse JSON. Raw:\n{text[:500]}")
 
@@ -573,14 +591,14 @@ Respond in this EXACT JSON format — no extra text outside the JSON:
 }}
 Only JSON. No extra text."""
 
-    text = ask_gemini(prompt)
+    text = ask_groq(prompt)
     return parse_json_safe(text, retries_left=2, prompt=prompt)
 
 
 def main():
     print("=" * 50)
     print("  NextLevelMind — Long-Form Script Generator")
-    print(f"  Model: {MODEL}")
+    print(f"  Model: {GROQ_MODEL}")
     print("=" * 50)
 
     book_page_text, current_book_name = get_book_pages_long()

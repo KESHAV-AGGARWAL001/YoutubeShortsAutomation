@@ -21,7 +21,7 @@ import datetime
 
 
 STEPS = [
-    ("long_02_write_script.py", "Generating long-form script (Gemini)"),
+    ("long_02_write_script.py", "Generating long-form script (Groq)"),
     ("03_voiceover.py",         "Generating voiceover (Edge TTS)"),
     ("04_get_footage.py",       "Setting up background"),
     ("long_05_make_video.py",   "Assembling 16:9 video (FFmpeg)"),
